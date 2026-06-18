@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><link rel="stylesheet" href="../css/style.css"><script src="../js/util.js"></script></head>
+<body>
+<div class="page-wrap">
+  <div class="page-header"><div><div class="page-title">⚙️ Configurações</div><div class="page-sub">Dados do estabelecimento</div></div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="form-card">
+      <div class="form-card-title">🍺 Dados do Estabelecimento</div>
+      <div class="form-group" style="margin-bottom:10px"><label class="form-label">Nome do Bar / Lanchonete *</label><input id="nome" placeholder="Ex: Bar do Zé"></div>
+      <div class="form-group" style="margin-bottom:10px"><label class="form-label">Endereço</label><input id="endereco" placeholder="Rua, número, bairro"></div>
+      <div class="form-group" style="margin-bottom:10px"><label class="form-label">Telefone / WhatsApp</label><input id="telefone" placeholder="(11) 99999-9999"></div>
+      <div class="form-group" style="margin-bottom:10px"><label class="form-label">CNPJ ou CPF</label><input id="cnpj" placeholder="00.000.000/0001-00"></div>
+      <div class="form-group" style="margin-bottom:14px"><label class="form-label">Responsável</label><input id="responsavel" placeholder="Nome do proprietário"></div>
+      <button class="btn btn-primary" onclick="salvar()">💾 Salvar Configurações</button>
+      <div class="aviso av-ok"   id="avisoOk"   style="margin-top:10px"></div>
+      <div class="aviso av-erro" id="avisoErro" style="margin-top:10px"></div>
+    </div>
+    <div>
+      <div class="form-card">
+        <div class="form-card-title">🔑 Licença Ativa</div>
+        <div id="licencaAtual" style="font-family:monospace;font-size:14px;font-weight:700;color:var(--primary);background:var(--primary-bg);border:1px solid var(--primary-bdr);border-radius:8px;padding:10px 14px">Carregando...</div>
+      </div>
+      <div class="form-card">
+        <div class="form-card-title">📊 Resumo do Sistema</div>
+        <div id="resumo" style="font-size:13px;color:var(--fg2);line-height:2"></div>
+      </div>
+      <div class="form-card">
+        <div class="form-card-title">🌐 Cardápio Digital</div>
+        <div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:10px">Link fixo do estabelecimento gerado automaticamente pelo MesaUp.</div>
+        <div id="cloudResumo" style="font-size:13px;color:var(--fg2);line-height:1.8;word-break:break-all"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+aplicarTemaAtual()
+const { getConfig, setConfig, listarMesas, listarCardapio, listarComandas, listarVendas, listarClientes } = require('../js/db.js')
+const { ensureCloudIdentity, getPublicCardapioUrl, isCloudConfigured } = require('../js/cloud.js')
+const campos = ['nome','endereco','telefone','cnpj','responsavel']
+
+function carregar() {
+  campos.forEach(c=>{ const el=document.getElementById(c); if(el) el.value=getConfig('bar_'+c) })
+  try{ document.getElementById('licencaAtual').textContent=localStorage.getItem('@MESAUP:licenca')||'Não ativada' }catch(e){}
+  const mesas    = listarMesas().length
+  const produtos = listarCardapio().length
+  const abertas  = listarComandas({status:'aberta'}).length
+  const vendas   = listarVendas().length
+  const clientes = listarClientes().length
+  document.getElementById('resumo').innerHTML = `
+    🪑 <b>${mesas}</b> mesas cadastradas<br>
+    🍽️ <b>${produtos}</b> itens no cardápio<br>
+    📋 <b>${abertas}</b> comanda(s) abertas agora<br>
+    PDV <b>${vendas}</b> venda(s) avulsas/delivery<br>
+    CRM <b>${clientes}</b> cliente(s) cadastrados`
+  const cloud = ensureCloudIdentity(getConfig('bar_nome') || 'mesaup')
+  document.getElementById('cloudResumo').innerHTML = `
+    <b>Código:</b> ${cloud.codigo}<br>
+    <b>Link fixo:</b> ${getPublicCardapioUrl(cloud.codigo)}<br>
+    <b>Status:</b> ${isCloudConfigured() ? '<span style="color:var(--green)">Pronto para publicar</span>' : '<span style="color:var(--yellow)">Publicação online indisponível</span>'}`
+}
+
+function salvar() {
+  campos.forEach(c=>{ const el=document.getElementById(c); if(el) setConfig('bar_'+c, el.value.trim()) })
+  aviso('ok','Configurações salvas!')
+  carregar()
+}
+carregar()
+</script>
+</body></html>
+

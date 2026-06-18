@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><link rel="stylesheet" href="../css/style.css"><script src="../js/util.js"></script></head>
+<body>
+<div class="page-wrap">
+  <div class="page-header">
+    <div><div class="page-title">💰 Financeiro</div><div class="page-sub">Receitas, despesas e fluxo de caixa</div></div>
+    <button class="btn btn-ghost" onclick="exportarCSV()">📊 Exportar Excel</button>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div><div class="kpi-label">Receita do Mês</div><div class="kpi-val sm" id="kpiR" style="color:var(--green)">R$ 0,00</div></div><div class="kpi-icon ki-green">💵</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Despesas do Mês</div><div class="kpi-val sm" id="kpiD" style="color:var(--red)">R$ 0,00</div></div><div class="kpi-icon ki-red">📉</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Saldo do Mês</div><div class="kpi-val sm" id="kpiS">R$ 0,00</div></div><div class="kpi-icon ki-orange">💰</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Lançamentos</div><div class="kpi-val" id="kpiN">0</div></div><div class="kpi-icon ki-blue">📋</div></div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-card-title" id="formTitulo">Novo Lançamento Manual</div>
+    <div class="form-row">
+      <div class="form-group fg1"><label class="form-label">Data *</label><input type="date" id="data"></div>
+      <div class="form-group fg1"><label class="form-label">Tipo *</label><select id="tipo"><option value="Receita">Receita</option><option value="Despesa">Despesa</option></select></div>
+      <div class="form-group fg3"><label class="form-label">Descrição *</label><input id="descricao" placeholder="Ex: Compra de bebidas, Aluguel..."></div>
+      <div class="form-group fg1"><label class="form-label">Valor (R$) *</label><input type="number" id="valor" placeholder="0,00" min="0" step="0.01"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group fg2"><label class="form-label">Forma de Pagamento</label>
+        <select id="forma_pgto"><option>Dinheiro</option><option>PIX</option><option>Cartão de Crédito</option><option>Cartão de Débito</option><option>Transferência</option><option>Outro</option></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn btn-primary" id="btnSalvar" onclick="salvar()">+ Registrar</button>
+      <button class="btn-cancel" id="btnCancelar" onclick="cancelar()">Cancelar</button>
+    </div>
+    <div class="aviso av-erro" id="avisoErro"></div>
+    <div class="aviso av-ok"   id="avisoOk"></div>
+  </div>
+
+  <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap">
+    <div class="form-group"><label class="form-label">Mês</label><input type="month" id="filtroMes" oninput="render()"></div>
+    <div class="form-group"><label class="form-label">Tipo</label>
+      <select id="filtroTipo" onchange="render()" style="width:130px"><option value="">Todos</option><option value="Receita">Receitas</option><option value="Despesa">Despesas</option></select>
+    </div>
+    <button class="btn btn-ghost" onclick="limparFiltros()">Ver Todos</button>
+    <span style="margin-left:auto;font-size:12px;color:var(--muted);align-self:flex-end" id="count"></span>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Forma Pgto</th><th style="text-align:right">Valor</th><th style="text-align:center">Ações</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MODAL EDIÇÃO -->
+<div class="modal-ov" id="modalEdit" style="display:none" onclick="if(event.target===this)this.style.display='none'">
+  <div class="modal-box">
+    <div class="modal-title">✏️ Editar Lançamento</div>
+    <input type="hidden" id="editId">
+    <div class="form-row">
+      <div class="form-group fg1"><label class="form-label">Data</label><input type="date" id="editData"></div>
+      <div class="form-group fg1"><label class="form-label">Tipo</label><select id="editTipo"><option value="Receita">Receita</option><option value="Despesa">Despesa</option></select></div>
+      <div class="form-group fg3"><label class="form-label">Descrição</label><input id="editDesc"></div>
+    </div>
+    <div class="form-row" style="margin-top:10px">
+      <div class="form-group fg1"><label class="form-label">Valor</label><input type="number" id="editValor" step="0.01"></div>
+      <div class="form-group fg2"><label class="form-label">Forma Pgto</label>
+        <select id="editForma"><option>Dinheiro</option><option>PIX</option><option>Cartão de Crédito</option><option>Cartão de Débito</option><option>Transferência</option><option>Outro</option></select>
+      </div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="document.getElementById('modalEdit').style.display='none'">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEdicao()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+aplicarTemaAtual()
+const { listarFinanceiro, inserirFinanceiro, atualizarFinanceiro, deletarFinanceiro } = require('../js/db.js')
+const { ipcRenderer } = require('electron')
+const fs   = require('fs'), path = require('path')
+
+function salvar() {
+  const desc  = document.getElementById('descricao').value.trim()
+  const valor = Number(document.getElementById('valor').value||0)
+  if (!desc)        return aviso('erro','Informe a descrição.')
+  if (valor <= 0)   return aviso('erro','Informe um valor válido.')
+  inserirFinanceiro({ data:document.getElementById('data').value||dataHoje(), tipo:document.getElementById('tipo').value, descricao:desc, valor, forma_pgto:document.getElementById('forma_pgto').value })
+  aviso('ok','Lançamento registrado!')
+  document.getElementById('descricao').value = ''
+  document.getElementById('valor').value     = ''
+  render()
+}
+function cancelar() { document.getElementById('descricao').value=''; document.getElementById('valor').value='' }
+function limparFiltros() { document.getElementById('filtroMes').value=''; document.getElementById('filtroTipo').value=''; render() }
+
+function abrirEdicao(id) {
+  const lista = listarFinanceiro()
+  const l = lista.find(x=>x.id===id); if(!l) return
+  document.getElementById('editId').value    = id
+  document.getElementById('editData').value  = l.data||''
+  document.getElementById('editTipo').value  = l.tipo||'Receita'
+  document.getElementById('editDesc').value  = l.descricao||''
+  document.getElementById('editValor').value = l.valor||''
+  document.getElementById('editForma').value = l.forma_pgto||'Dinheiro'
+  document.getElementById('modalEdit').style.display = 'flex'
+}
+function salvarEdicao() {
+  const id    = Number(document.getElementById('editId').value)
+  const valor = Number(document.getElementById('editValor').value||0)
+  if (valor<=0) return avisoModal('Informe um valor válido.')
+  atualizarFinanceiro({ id, data:document.getElementById('editData').value, tipo:document.getElementById('editTipo').value, descricao:document.getElementById('editDesc').value.trim(), valor, forma_pgto:document.getElementById('editForma').value })
+  document.getElementById('modalEdit').style.display = 'none'
+  render()
+}
+function excluir(id) { confirmar('Excluir este lançamento?', ok=>{ if(ok){ deletarFinanceiro(id); render() } }) }
+
+function exportarCSV() {
+  const filtros = {}
+  const fm = document.getElementById('filtroMes').value
+  if (fm) filtros.mes = fm
+  const lista = listarFinanceiro(filtros)
+  if (!lista.length) return aviso('erro','Nenhum lançamento para exportar.')
+  let rec=0, des=0
+  lista.forEach(l=>{ if(l.tipo==='Receita') rec+=Number(l.valor||0); else des+=Number(l.valor||0) })
+  const escape = v => `"${String(v||'').replace(/"/g,'""')}"`
+  let csv = '\uFEFF'
+  csv += 'Data,Tipo,Descrição,Forma Pagamento,Valor (R$)\r\n'
+  lista.forEach(l=>{ csv += [escape(l.data?fmtData(l.data):''),escape(l.tipo),escape(l.descricao),escape(l.forma_pgto||''),String(Number(l.valor||0).toFixed(2)).replace('.',',')].join(',')+'\r\n' })
+  csv += `\r\n"RECEITAS","","","","${rec.toFixed(2).replace('.',',')}"\r\n`
+  csv += `"DESPESAS","","","","${des.toFixed(2).replace('.',',')}"\r\n`
+  csv += `"SALDO","","","","${(rec-des).toFixed(2).replace('.',',')}"\r\n`
+  ipcRenderer.invoke('salvar-csv',{conteudo:csv,nomeArquivo:`MesaUp_Financeiro_${fm||'todos'}.csv`}).then(r=>{
+    if(r&&r.sucesso) aviso('ok','Exportado: '+r.caminho)
+    else if(!r||r.motivo!=='cancelado') aviso('erro','Erro ao exportar.')
+  }).catch(()=>{
+    try{ const os=require('os'); const dest=path.join(os.homedir(),'Downloads',`MesaUp_${dataHoje()}.csv`); fs.writeFileSync(dest,csv,'utf8'); aviso('ok','Salvo em: '+dest) }
+    catch(e){ aviso('erro','Erro: '+e.message) }
+  })
+}
+
+function render() {
+  const filtros={}
+  const fm=document.getElementById('filtroMes').value
+  const ft=document.getElementById('filtroTipo').value
+  if(fm) filtros.mes=fm
+  if(ft) filtros.tipo=ft
+  const lista=listarFinanceiro(filtros)
+  document.getElementById('count').textContent=lista.length+' lançamento(s)'
+  let rec=0,des=0
+  lista.forEach(l=>{ if(l.tipo==='Receita') rec+=Number(l.valor||0); else des+=Number(l.valor||0) })
+  document.getElementById('kpiR').textContent=fmtMoeda(rec)
+  document.getElementById('kpiD').textContent=fmtMoeda(des)
+  document.getElementById('kpiN').textContent=lista.length
+  const saldo=rec-des
+  const sEl=document.getElementById('kpiS')
+  sEl.textContent=fmtMoeda(saldo)
+  sEl.style.color=saldo>=0?'var(--green)':'var(--red)'
+  document.getElementById('tbody').innerHTML=lista.length?lista.map(l=>`
+    <tr>
+      <td>${fmtData(l.data)}</td>
+      <td><span class="badge ${l.tipo==='Receita'?'b-green':'b-red'}">${l.tipo}</span></td>
+      <td><b style="color:var(--fg)">${l.descricao}</b></td>
+      <td style="font-size:12px;color:var(--muted)">${l.forma_pgto||'—'}</td>
+      <td style="text-align:right;font-weight:700;color:${l.tipo==='Receita'?'var(--green)':'var(--red)'}">${fmtMoeda(l.valor)}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-edit" onclick="abrirEdicao(${l.id})">✏️</button>
+        <button class="btn-danger" onclick="excluir(${l.id})">🗑️</button>
+      </td>
+    </tr>`).join('')
+  :'<tr><td colspan="6" class="empty">Nenhum lançamento encontrado.</td></tr>'
+}
+
+// Adicionar handler salvar-csv se não existir (fallback)
+document.getElementById('data').value = dataHoje()
+document.getElementById('filtroMes').value = new Date().toISOString().slice(0,7)
+render()
+</script>
+</body></html>

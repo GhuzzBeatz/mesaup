@@ -1,0 +1,108 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><link rel="stylesheet" href="../css/style.css"><script src="../js/util.js"></script></head>
+<body>
+<div class="page-wrap">
+  <div class="page-header"><div><div class="page-title">📖 Como Usar</div><div class="page-sub">Guia completo do MesaUp</div></div></div>
+
+  <!-- FLUXO RESUMIDO -->
+  <div style="background:linear-gradient(135deg,var(--primary-bg),var(--orange-bg));border:1px solid var(--primary-bdr);border-radius:14px;padding:18px 20px;margin-bottom:20px">
+    <div style="font-size:13px;font-weight:800;color:var(--fg);margin-bottom:12px">⚡ Fluxo Recomendado — Faça nesta ordem ao começar</div>
+    <div style="display:flex;gap:0;align-items:center;flex-wrap:wrap;gap:8px">
+      <div style="background:var(--primary);color:#fff;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;text-align:center">1️⃣<br>Configurações</div>
+      <div style="color:var(--muted);font-size:18px">→</div>
+      <div style="background:var(--primary);color:#fff;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;text-align:center">2️⃣<br>Mesas</div>
+      <div style="color:var(--muted);font-size:18px">→</div>
+      <div style="background:var(--primary);color:#fff;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;text-align:center">3️⃣<br>Estoque</div>
+      <div style="color:var(--muted);font-size:18px">→</div>
+      <div style="background:var(--orange);color:#fff;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;text-align:center">4️⃣<br>Cardápio QR</div>
+      <div style="color:var(--muted);font-size:18px">→</div>
+      <div style="background:var(--primary);color:#fff;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;text-align:center">5️⃣<br>PDV/Comandas</div>
+      <div style="color:var(--muted);font-size:18px">→</div>
+      <div style="background:var(--green);color:#111;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;text-align:center">✅<br>Pronto!</div>
+    </div>
+  </div>
+
+  <div class="info-sec"><h3>1. Configurações Iniciais</h3>
+    <div class="info-step"><div class="step-num">1</div><div class="step-txt">Acesse <b>Configurações</b> e preencha o nome do seu bar ou lanchonete. Esse nome vai aparecer no cardápio digital dos clientes.</div></div>
+  </div>
+
+  <div class="info-sec"><h3>2. Cadastro de Mesas</h3>
+    <div class="info-step"><div class="step-num">1</div><div class="step-txt">Acesse <b>Mesas</b> e clique em <b>+ Nova Mesa</b>. Cadastre todas as mesas com número e capacidade (ex: Mesa 1 — 4 pessoas).</div></div>
+    <div class="info-step"><div class="step-num">2</div><div class="step-txt">As mesas aparecem no mapa visual com cor <b style="color:var(--green)">🟢 Verde</b> quando livres e <b style="color:var(--orange)">🔴 Laranja</b> quando ocupadas.</div></div>
+  </div>
+
+  <div class="info-sec"><h3>3. Cadastro de Produtos no Estoque</h3>
+    <p style="font-size:13px;color:var(--fg2);margin-bottom:14px;line-height:1.7;background:var(--primary-bg);border:1px solid var(--primary-bdr);border-radius:8px;padding:12px">
+      📌 <b>Atenção:</b> Antes de usar o Cardápio QR Code, você precisa cadastrar seus produtos aqui primeiro. O Estoque é onde tudo começa.
+    </p>
+    <div class="info-step"><div class="step-num">1</div><div class="step-txt">Acesse <b>Estoque</b> e clique em <b>+ Novo Produto</b>.</div></div>
+    <div class="info-step">
+      <div class="step-num">2</div>
+      <div class="step-txt">
+        Escolha o tipo do produto:<br><br>
+        <div style="background:var(--primary-bg);border:1px solid var(--primary-bdr);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">
+          <b style="color:var(--primary)">🍽️ Produto do Cardápio</b> — vai aparecer no celular do cliente pelo QR Code. Precisa de um preço de venda. Ex: Cerveja, Porção de Batata, Hamburguer.
+        </div>
+        <div style="background:var(--orange-bg);border:1px solid rgba(249,115,22,.3);border-radius:8px;padding:10px 14px;font-size:13px">
+          <b style="color:var(--orange)">🔒 Produto Interno</b> — só para controle do seu estoque. O cliente NÃO vê. Ex: Carvão, Material de limpeza, Guardanapo, Gás.
+        </div>
+      </div>
+    </div>
+    <div class="info-step"><div class="step-num">3</div><div class="step-txt">Para <b>Produtos do Cardápio</b>: preencha nome, categoria, quantidade e <b>preço de venda</b>. Deixe em <b>📱 Disponível</b> para aparecer no QR Code imediatamente.</div></div>
+    <div class="info-step"><div class="step-num">4</div><div class="step-txt">Para <b>Produtos Internos</b>: preencha nome, categoria, quantidade e quantidade mínima. Não precisa de preço.</div></div>
+    <div class="info-step"><div class="step-num">5</div><div class="step-txt">As duas abas na tela do Estoque separam visualmente o que é Cardápio e o que é Interno. Na aba Cardápio, você pode alternar rapidamente entre <b>📱 Visível</b> e <b>🚫 Oculto</b> para cada produto.</div></div>
+  </div>
+
+  <div class="info-sec"><h3>4. Cardápio QR Code Online</h3>
+    <div style="background:var(--blue-bg);border:1px solid rgba(79,142,247,.25);border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;color:var(--fg2);line-height:1.6">
+      📌 <b>Atenção:</b> o QR principal agora é online. O cliente pode abrir o cardápio usando a própria internet do celular.
+    </div>
+    <div class="info-step"><div class="step-num">1</div><div class="step-txt">Acesse <b>Cardápio QR Code</b> para ver o QR fixo do estabelecimento.</div></div>
+    <div class="info-step"><div class="step-num">2</div><div class="step-txt">Clique em <b>Publicar / Atualizar</b> sempre que mudar produtos, preços ou disponibilidade.</div></div>
+    <div class="info-step"><div class="step-num">3</div><div class="step-txt">Clique em <b>Imprimir QR</b> para colocar nas mesas, balcão ou caixa.</div></div>
+    <div class="info-step"><div class="step-num">4</div><div class="step-txt">Use <b>Exportar PDF</b> para enviar o cardápio como arquivo pelo WhatsApp.</div></div>
+  </div>
+    <div class="info-step"><div class="step-num">2</div><div class="step-txt">Clique em <b>📱 Gerar QR Code</b>. Um servidor local é iniciado no seu computador.</div></div>
+    <div class="info-step"><div class="step-num">3</div><div class="step-txt">O celular do cliente precisa estar conectado no <b>mesmo WiFi</b> do computador. Ele aponta a câmera para o QR Code e o cardápio abre automaticamente no navegador.</div></div>
+    <div class="info-step"><div class="step-num">4</div><div class="step-txt">Clique em <b>🖨️ Imprimir QR Code</b> para gerar uma folha com o QR Code e colocar nas mesas do estabelecimento.</div></div>
+    <div class="info-step"><div class="step-num">5</div><div class="step-txt">Deixe o MesaUp aberto enquanto os clientes usam. O servidor fecha automaticamente quando você fechar o app.</div></div>
+  </div>
+
+  <div class="info-sec"><h3>5. PDV & Delivery</h3>
+    <div class="info-step"><div class="step-num">1</div><div class="step-txt">Acesse <b>PDV & Delivery</b> para registrar vendas rapidas sem mesa, pedidos de retirada ou entregas.</div></div>
+    <div class="info-step"><div class="step-num">2</div><div class="step-txt">Clique nos produtos para montar o carrinho, escolha <b>Balcao</b> ou <b>Delivery</b>, informe pagamento, desconto e taxa de entrega quando precisar.</div></div>
+    <div class="info-step"><div class="step-num">3</div><div class="step-txt">Ao finalizar, o MesaUp registra a receita no Financeiro, baixa o estoque e atualiza o cliente no CRM automaticamente.</div></div>
+  </div>
+
+  <div class="info-sec"><h3>6. Abrindo uma Comanda</h3>
+    <div class="info-step"><div class="step-num">1</div><div class="step-txt">Acesse <b>Mesas</b> e clique em uma mesa <b style="color:var(--green)">🟢 Livre</b> para abrir uma comanda.</div></div>
+    <div class="info-step"><div class="step-num">2</div><div class="step-txt">Informe o nome do garçom (opcional) e clique em <b>🍺 Abrir Comanda</b>. A mesa ficará <b style="color:var(--orange)">🔴 Ocupada</b>.</div></div>
+  </div>
+
+  <div class="info-sec"><h3>7. Adicionando Pedidos</h3>
+    <div class="info-step"><div class="step-num">1</div><div class="step-txt">Acesse <b>Comandas</b>, localize a comanda aberta e clique nela.</div></div>
+    <div class="info-step"><div class="step-num">2</div><div class="step-txt">No campo <b>Buscar no Cardápio</b>, digite o nome do produto. Clique nele para selecionar, informe a quantidade e observações (ex: "sem gelo").</div></div>
+    <div class="info-step"><div class="step-num">3</div><div class="step-txt">Clique em <b>+ Adicionar ao Pedido</b>. O total é atualizado automaticamente a cada item.</div></div>
+  </div>
+
+  <div class="info-sec"><h3>8. Fechando a Conta</h3>
+    <div class="info-step"><div class="step-num">1</div><div class="step-txt">Na comanda aberta, selecione a <b>Forma de Pagamento</b> (Dinheiro, PIX, Cartão...).</div></div>
+    <div class="info-step"><div class="step-num">2</div><div class="step-txt">Use <b>Dividir em</b> para calcular o valor por pessoa quando a mesa precisar rachar a conta.</div></div>
+    <div class="info-step"><div class="step-num">3</div><div class="step-txt">Clique em <b>✅ Fechar e Cobrar</b>. A mesa volta a ficar livre, o valor entra no <b>Financeiro</b>, o estoque baixa e o cliente entra no CRM.</div></div>
+  </div>
+
+  <div class="info-sec"><h3>9. Clientes CRM</h3>
+    <div class="info-step"><div class="step-num">1</div><div class="step-txt">Acesse <b>Clientes CRM</b> para ver clientes cadastrados manualmente ou gerados automaticamente por vendas e comandas.</div></div>
+    <div class="info-step"><div class="step-num">2</div><div class="step-txt">Use telefone, endereco e aniversario para fidelidade, atendimento por WhatsApp e acompanhamento de compras.</div></div>
+  </div>
+
+  <div class="info-sec"><h3>10. Financeiro</h3>
+    <div class="info-step"><div class="step-num">1</div><div class="step-txt">Toda comanda fechada entra automaticamente como Receita. Adicione despesas manualmente (compras, aluguel, etc.).</div></div>
+    <div class="info-step"><div class="step-num">2</div><div class="step-txt">Use <b>📊 Exportar Excel</b> para gerar um relatório completo do período filtrado.</div></div>
+  </div>
+
+</div>
+<script>aplicarTemaAtual()</script>
+</body></html>
+

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="dark">
+<head>
+  <meta charset="UTF-8">
+  <title>MesaUp</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/licenca.js"></script>
+  <script>
+    if (!licencaAtivaMU()) {
+      window.location.replace('pages/licenca.html')
+    }
+  </script>
+</head>
+<body>
+<div class="app-titlebar">Mesa<span>Up</span></div>
+<div class="container">
+
+  <div class="menu">
+    <div class="menu-logo">
+      <div class="logo-icon">🪑</div>
+      <span class="logo-text">Mesa<span class="logo-accent">Up</span></span>
+    </div>
+
+    <nav class="menu-nav">
+      <button class="nav-btn active" onclick="ir('pages/dashboard.html',this)">
+        <span class="nav-icon">🏠</span> Dashboard
+      </button>
+      <button class="nav-btn" onclick="ir('pages/mesas.html',this)">
+        <span class="nav-icon">🪑</span> Mesas
+        <span class="nav-badge" id="badgeMesas">0</span>
+      </button>
+      <button class="nav-btn" onclick="ir('pages/comandas.html',this)">
+        <span class="nav-icon">📋</span> Comandas
+        <span class="nav-badge" id="badgeComandas">0</span>
+      </button>
+      <button class="nav-btn" onclick="ir('pages/pdv.html',this)">
+        <span class="nav-icon">🧾</span> PDV & Delivery
+        <span class="nav-badge" id="badgeDelivery">0</span>
+      </button>
+      <button class="nav-btn" onclick="ir('pages/clientes.html',this)">
+        <span class="nav-icon">👥</span> Clientes CRM
+      </button>
+
+      <div class="nav-sep"></div>
+      <div class="nav-group-label">Cardápio & Estoque</div>
+
+      <button class="nav-btn" onclick="ir('pages/cardapio.html',this)">
+        <span class="nav-icon">📱</span> Cardápio QR Code
+      </button>
+      <button class="nav-btn" onclick="ir('pages/estoque.html',this)">
+        <span class="nav-icon">📦</span> Estoque & Cardápio
+        <span class="nav-badge" id="badgeEstoque">0</span>
+      </button>
+
+      <div class="nav-sep"></div>
+      <div class="nav-group-label">Financeiro</div>
+
+      <button class="nav-btn" onclick="ir('pages/financeiro.html',this)">
+        <span class="nav-icon">💰</span> Financeiro
+      </button>
+      <button class="nav-btn" onclick="ir('pages/configuracoes.html',this)">
+        <span class="nav-icon">⚙️</span> Configurações
+      </button>
+
+      <div class="nav-sep"></div>
+
+      <button class="nav-btn" onclick="ir('pages/como_usar.html',this)">
+        <span class="nav-icon">📖</span> Como Usar
+      </button>
+      <button class="nav-btn" onclick="ir('pages/sobre.html',this)">
+        <span class="nav-icon">ℹ️</span> Sobre
+      </button>
+    </nav>
+
+    <div class="menu-footer">
+      <button class="btn-tema" id="btnTema" onclick="alternarTema()">
+        <span id="temaIcon">☀️</span>
+        <span id="temaLabel">Modo Claro</span>
+      </button>
+      <div class="menu-footer-brand">Desenvolvido por</div>
+      <div class="menu-footer-contact">
+        <span>GHZ Plugin</span>
+        <span>Ghzplugin.com.br</span>
+        <span>11948981459</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="conteudo">
+    <iframe id="frame" src="pages/dashboard.html"></iframe>
+  </div>
+
+</div>
+<script>
+  const tema = localStorage.getItem('@MESAUP:tema') || 'dark'
+  document.documentElement.setAttribute('data-tema', tema)
+  document.getElementById('temaIcon').textContent  = tema === 'dark' ? '☀️' : '🌙'
+  document.getElementById('temaLabel').textContent = tema === 'dark' ? 'Modo Claro' : 'Modo Escuro'
+
+  function ir(pagina, btn) {
+    document.getElementById('frame').src = pagina
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'))
+    if (btn) btn.classList.add('active')
+    atualizarBadges()
+  }
+
+  function alternarTema() {
+    const atual = localStorage.getItem('@MESAUP:tema') || 'dark'
+    const novo  = atual === 'dark' ? 'light' : 'dark'
+    localStorage.setItem('@MESAUP:tema', novo)
+    document.documentElement.setAttribute('data-tema', novo)
+    document.getElementById('temaIcon').textContent  = novo === 'dark' ? '☀️' : '🌙'
+    document.getElementById('temaLabel').textContent = novo === 'dark' ? 'Modo Claro' : 'Modo Escuro'
+    const frame = document.getElementById('frame')
+    frame.src = frame.src
+  }
+
+  function atualizarBadges() {
+    try {
+      const { listarComandas, listarEstoque, listarMesas, listarVendas } = require('./js/db.js')
+      const abertas  = listarComandas({ status:'aberta' }).length
+      const ocupadas = listarMesas().filter(m => m.status === 'ocupada').length
+      const alertas  = listarEstoque().filter(e => Number(e.quantidade||0) <= Number(e.qtd_minima||0)).length
+      const entregas = listarVendas().filter(v => v.tipo === 'Delivery' && !['entregue','cancelada','finalizada'].includes(v.status)).length
+
+      const bC = document.getElementById('badgeComandas')
+      const bM = document.getElementById('badgeMesas')
+      const bE = document.getElementById('badgeEstoque')
+      const bD = document.getElementById('badgeDelivery')
+      if(bC){ bC.textContent=abertas;  bC.style.display=abertas>0?'flex':'none' }
+      if(bM){ bM.textContent=ocupadas; bM.style.display=ocupadas>0?'flex':'none' }
+      if(bE){ bE.textContent=alertas;  bE.style.display=alertas>0?'flex':'none' }
+      if(bD){ bD.textContent=entregas; bD.style.display=entregas>0?'flex':'none' }
+    } catch(e) {}
+  }
+
+  atualizarBadges()
+  setInterval(atualizarBadges, 5000)
+</script>
+</body>
+</html>

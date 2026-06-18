@@ -1,0 +1,469 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="../js/util.js"></script>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Comandas</div>
+      <div class="page-sub">Gerenciamento de pedidos por mesa</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:flex-end">
+    <div class="form-group">
+      <label class="form-label">Status</label>
+      <select id="filtroStatus" onchange="render()" style="width:150px">
+        <option value="aberta">Abertas</option>
+        <option value="">Todas</option>
+        <option value="fechada">Fechadas</option>
+        <option value="cancelada">Canceladas</option>
+      </select>
+    </div>
+    <span style="margin-left:auto;font-size:12px;color:var(--muted);align-self:flex-end" id="count"></span>
+  </div>
+
+  <div id="listaComandas"></div>
+
+  <div class="aviso av-ok" id="avisoOk"></div>
+  <div class="aviso av-erro" id="avisoErro"></div>
+</div>
+
+<div class="modal-ov" id="modalDetalhe" style="display:none" onclick="if(event.target===this)fecharModal()">
+  <div class="modal-box wide">
+    <div class="modal-title" id="detalhe_titulo">Comanda</div>
+    <input type="hidden" id="detalhe_id">
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div>
+        <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Itens do Pedido</div>
+        <div id="listaItens" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;min-height:180px;max-height:320px;overflow-y:auto;padding:10px"></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px;background:var(--primary-bg);border:1px solid var(--primary-bdr);border-radius:8px">
+          <span style="font-weight:800;color:var(--fg)">TOTAL</span>
+          <span style="font-size:20px;font-weight:900;color:var(--primary)" id="detalhe_total">R$ 0,00</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px;background:var(--card2);border:1px solid var(--border);border-radius:8px">
+          <div class="form-group" style="width:90px">
+            <label class="form-label">Dividir em</label>
+            <input type="number" id="dividirPessoas" value="1" min="1" oninput="atualizarDivisao()">
+          </div>
+          <div style="flex:1;text-align:right">
+            <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Valor por pessoa</div>
+            <div style="font-size:18px;font-weight:900;color:var(--green)" id="valorPorPessoa">R$ 0,00</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Adicionar Item</div>
+        <div class="form-group" style="margin-bottom:10px">
+          <label class="form-label">Buscar no Cardapio</label>
+          <input id="buscaCardapio" placeholder="Nome do produto..." oninput="filtrarCardapio()" autocomplete="off">
+        </div>
+        <div id="resultCardapio" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;max-height:200px;overflow-y:auto;margin-bottom:10px"></div>
+        <div class="form-row">
+          <div class="form-group fg1"><label class="form-label">Qtd</label><input type="number" id="addQtd" value="1" min="1" style="width:70px"></div>
+          <div class="form-group fg3"><label class="form-label">Obs do Item</label><input id="addObs" placeholder="Sem gelo, sem sal..."></div>
+        </div>
+        <input type="hidden" id="addProdId">
+        <input type="hidden" id="addProdNome">
+        <input type="hidden" id="addProdPreco">
+        <button class="btn btn-primary" onclick="adicionarItem()" style="width:100%;margin-top:10px">+ Adicionar ao Pedido</button>
+        <div class="aviso av-ok" id="avisoOk2" style="margin-top:6px"></div>
+        <div class="aviso av-erro" id="avisoErro2" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <div id="fecharArea" style="margin-top:16px;padding:14px;background:var(--card2);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="form-group fg2">
+        <label class="form-label">Forma de Pagamento</label>
+        <select id="formaPgto">
+          <option>Dinheiro</option>
+          <option>PIX</option>
+          <option>Cartao de Credito</option>
+          <option>Cartao de Debito</option>
+          <option>Outro</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="imprimirContaMesa()" style="margin-top:16px">🖨️ Imprimir Conta</button>
+      <button class="btn btn-green" onclick="fecharComandaAtual()" style="margin-top:16px">Fechar e Cobrar</button>
+      <button class="btn btn-red" onclick="cancelarComandaAtual()" style="margin-top:16px">Cancelar Comanda</button>
+    </div>
+
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+aplicarTemaAtual()
+const { getConfig, listarComandas, getComanda, adicionarItemComanda, removerItemComanda, fecharComanda, cancelarComanda, listarCardapio, getEstoqueItem } = require('../js/db.js')
+let comandaAtualId = null
+
+function esc(v) {
+  return String(v || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))
+}
+
+function tituloSetor(setor) {
+  return setor === 'balcao' ? 'BALCÃO' : 'COZINHA'
+}
+
+function badgeSetor(setor) {
+  if (setor === 'cozinha') return '<span class="badge b-orange" style="margin-left:6px">Cozinha</span>'
+  if (setor === 'balcao') return '<span class="badge b-blue" style="margin-left:6px">Balcão</span>'
+  return ''
+}
+
+function render() {
+  const fs = document.getElementById('filtroStatus').value
+  const filtros = fs ? { status: fs } : {}
+  const lista = listarComandas(filtros)
+  document.getElementById('count').textContent = lista.length + ' comanda(s)'
+
+  const el = document.getElementById('listaComandas')
+  if (!lista.length) {
+    el.innerHTML = `<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:40px;text-align:center;color:var(--muted)">
+      ${fs === 'aberta' ? 'Nenhuma comanda aberta no momento.' : 'Nenhuma comanda encontrada.'}</div>`
+    return
+  }
+
+  el.innerHTML = lista.map(c => `
+    <div style="background:var(--card);border:2px solid ${c.status==='aberta'?'var(--orange)':c.status==='fechada'?'var(--green)':'var(--border)'};border-radius:14px;padding:16px 18px;margin-bottom:12px;cursor:${c.status==='aberta'?'pointer':'default'}"
+      onclick="${c.status==='aberta' ? `abrirDetalhe(${c.id})` : ''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--fg)">Mesa ${c.mesa_num || '-'}
+            <span class="badge ${c.status==='aberta'?'b-orange':c.status==='fechada'?'b-green':'b-red'}" style="margin-left:8px">${c.status}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:3px">
+            Aberta: ${c.abertura ? c.abertura.slice(0,16).replace('T',' ') : '-'}
+            ${c.consumidor ? ' · Cliente: ' + c.consumidor : ''}${c.garcom ? ' · Garcom: ' + c.garcom : ''}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:20px;font-weight:900;color:var(--primary)">${fmtMoeda(c.total || 0)}</div>
+          <div style="font-size:11px;color:var(--muted)">${(c.itens || []).length} item(s)</div>
+        </div>
+      </div>
+      ${c.status==='aberta' ? '<div style="font-size:11px;color:var(--orange);margin-top:8px;font-weight:600">Clique para ver e gerenciar pedidos -></div>' : ''}
+    </div>`).join('')
+}
+
+function abrirComandaDaMesaUrl() {
+  const params = new URLSearchParams(window.location.search)
+  const mesaId = Number(params.get('mesa_id') || 0)
+  if (!mesaId) return
+  const comanda = listarComandas({ status: 'aberta', mesa_id: mesaId })[0]
+  if (comanda) {
+    abrirDetalhe(comanda.id)
+    return
+  }
+  avisoModal('Nenhuma comanda aberta encontrada para esta mesa.')
+}
+
+function abrirDetalhe(id) {
+  comandaAtualId = id
+  renderDetalhe()
+  document.getElementById('modalDetalhe').style.display = 'flex'
+  document.getElementById('buscaCardapio').value = ''
+  document.getElementById('resultCardapio').innerHTML = ''
+  document.getElementById('addProdId').value = ''
+  document.getElementById('addQtd').value = '1'
+  document.getElementById('addObs').value = ''
+  document.getElementById('dividirPessoas').value = '1'
+  atualizarDivisao()
+}
+
+function fecharModal() {
+  document.getElementById('modalDetalhe').style.display = 'none'
+  render()
+}
+
+function renderDetalhe() {
+  const c = getComanda(comandaAtualId)
+  if (!c) return
+
+  document.getElementById('detalhe_titulo').textContent = `Mesa ${c.mesa_num} - Comanda #${c.id}${c.consumidor ? ' - Cliente: ' + c.consumidor : ''}`
+  document.getElementById('detalhe_id').value = c.id
+  document.getElementById('detalhe_total').textContent = fmtMoeda(c.total || 0)
+
+  const itens = c.itens || []
+  const liEl = document.getElementById('listaItens')
+  liEl.innerHTML = itens.length ? itens.map(it => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px;border-bottom:1px solid var(--border);gap:8px">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:var(--fg)">${esc(it.nome)}${badgeSetor(it.setor_preparo || '')}</div>
+        ${it.obs ? `<div style="font-size:11px;color:var(--muted)">${esc(it.obs)}</div>` : ''}
+      </div>
+      <div style="font-size:12px;color:var(--muted);white-space:nowrap">${it.qtd}x ${fmtMoeda(it.preco)}</div>
+      <div style="font-weight:700;color:var(--primary);white-space:nowrap">${fmtMoeda(it.preco * it.qtd)}</div>
+      <button class="btn-danger" onclick="removerItem(${it.item_id})" title="Remover">X</button>
+    </div>`).join('')
+  : '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">Nenhum item adicionado.</div>'
+  atualizarDivisao()
+}
+
+function atualizarDivisao() {
+  const c = getComanda(comandaAtualId)
+  if (!c) return
+  const pessoas = Math.max(1, Number(document.getElementById('dividirPessoas').value || 1))
+  document.getElementById('valorPorPessoa').textContent = fmtMoeda(Number(c.total || 0) / pessoas)
+}
+
+function filtrarCardapio() {
+  const busca = document.getElementById('buscaCardapio').value.toLowerCase().trim()
+  const el = document.getElementById('resultCardapio')
+  if (!busca) {
+    el.innerHTML = ''
+    return
+  }
+
+  const lista = listarCardapio(busca).filter(p => p.disponivel !== 0).slice(0, 10)
+  el.innerHTML = lista.length ? lista.map(p => `
+    <div onclick="selecionarProd(${p.id})"
+      style="padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;transition:background .1s"
+      onmouseover="this.style.background='var(--card)'" onmouseout="this.style.background=''">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--fg)">${esc(p.nome)}${badgeSetor(p.setor_preparo || '')}</div>
+        <div style="font-size:11px;color:var(--muted)">${esc(p.categoria || '')}</div>
+      </div>
+      <div style="font-weight:700;color:var(--primary)">${fmtMoeda(p.preco)}</div>
+    </div>`).join('')
+  : '<div style="padding:12px;color:var(--muted);font-size:13px;text-align:center">Nenhum produto encontrado.</div>'
+}
+
+function selecionarProd(id) {
+  const p = getEstoqueItem(Number(id))
+  if (!p) return
+  document.getElementById('addProdId').value = id
+  document.getElementById('addProdNome').value = p.nome
+  document.getElementById('addProdPreco').value = p.preco
+  document.getElementById('buscaCardapio').value = p.nome
+  document.getElementById('resultCardapio').innerHTML = `
+    <div style="padding:10px 12px;background:var(--primary-bg);border:1px solid var(--primary-bdr);border-radius:8px;display:flex;justify-content:space-between">
+      <span style="font-weight:700;color:var(--fg)">${esc(p.nome)}${badgeSetor(p.setor_preparo || '')}</span>
+      <span style="font-weight:700;color:var(--primary)">${fmtMoeda(p.preco)}</span>
+    </div>`
+}
+
+function adicionarItem() {
+  const prodId = document.getElementById('addProdId').value
+  const prodNome = document.getElementById('addProdNome').value
+  const prodPreco = Number(document.getElementById('addProdPreco').value || 0)
+  const qtd = Number(document.getElementById('addQtd').value || 1)
+  const obs = document.getElementById('addObs').value.trim()
+  const produto = getEstoqueItem(Number(prodId)) || {}
+  const setorPreparo = produto.setor_preparo || ''
+
+  if (!prodId || !prodNome) {
+    document.getElementById('avisoErro2').textContent = 'Selecione um produto do cardapio.'
+    document.getElementById('avisoErro2').style.display = 'block'
+    setTimeout(() => document.getElementById('avisoErro2').style.display = 'none', 3000)
+    return
+  }
+
+  if (qtd < 1) {
+    document.getElementById('avisoErro2').textContent = 'Quantidade deve ser pelo menos 1.'
+    document.getElementById('avisoErro2').style.display = 'block'
+    setTimeout(() => document.getElementById('avisoErro2').style.display = 'none', 3000)
+    return
+  }
+
+  const itemPedido = { produto_id: Number(prodId), nome: prodNome, preco: prodPreco, qtd, obs, setor_preparo: setorPreparo }
+  adicionarItemComanda(comandaAtualId, itemPedido)
+  document.getElementById('avisoOk2').textContent = `${qtd}x ${prodNome} adicionado!`
+  document.getElementById('avisoOk2').style.display = 'block'
+  setTimeout(() => document.getElementById('avisoOk2').style.display = 'none', 2500)
+
+  document.getElementById('addProdId').value = ''
+  document.getElementById('addProdNome').value = ''
+  document.getElementById('addProdPreco').value = ''
+  document.getElementById('buscaCardapio').value = ''
+  document.getElementById('resultCardapio').innerHTML = ''
+  document.getElementById('addQtd').value = '1'
+  document.getElementById('addObs').value = ''
+
+  renderDetalhe()
+  if (setorPreparo) {
+    setTimeout(() => imprimirPedidoPreparo(getComanda(comandaAtualId), itemPedido), 120)
+  }
+}
+
+function removerItem(itemId) {
+  confirmar('Remover este item da comanda?', ok => {
+    if (ok) {
+      removerItemComanda(comandaAtualId, itemId)
+      renderDetalhe()
+    }
+  })
+}
+
+function imprimirHTML(html) {
+  const w = window.open('', '_blank')
+  if (!w) return avisoModal('Não foi possível abrir a janela de impressão.')
+  const fecharJanela = () => setTimeout(() => { try { w.close() } catch(e) {} }, 350)
+  w.onafterprint = fecharJanela
+  w.document.write(html)
+  w.document.close()
+  setTimeout(() => {
+    try {
+      w.focus()
+      w.print()
+      setTimeout(() => { if (!w.closed) fecharJanela() }, 60000)
+    } catch(e) {}
+  }, 450)
+}
+
+function nomeEmpresaRecibo() {
+  return String(getConfig('bar_nome', '') || '').trim() || 'MesaUp'
+}
+
+function agruparItensConta(itens = []) {
+  const grupos = []
+  const mapa = new Map()
+  ;(itens || []).forEach(it => {
+    const chave = [it.produto_id || '', it.nome || '', Number(it.preco || 0), it.obs || ''].join('|')
+    if (!mapa.has(chave)) {
+      const novo = { ...it, qtd: Number(it.qtd || 0), total: Number(it.preco || 0) * Number(it.qtd || 0) }
+      mapa.set(chave, novo)
+      grupos.push(novo)
+      return
+    }
+    const grupo = mapa.get(chave)
+    grupo.qtd += Number(it.qtd || 0)
+    grupo.total += Number(it.preco || 0) * Number(it.qtd || 0)
+  })
+  return grupos
+}
+
+function linhasItensConta(c) {
+  return agruparItensConta(c.itens || []).map(it => `
+    <tr>
+      <td class="item">
+        <b>${esc(it.qtd)}x ${esc(it.nome)}</b>
+        ${it.obs ? `<small>${esc(it.obs)}</small>` : ''}
+      </td>
+      <td class="valor">${fmtMoeda(it.total || (Number(it.preco || 0) * Number(it.qtd || 0)))}</td>
+    </tr>`).join('')
+}
+
+function gerarHTMLContaMesa(c) {
+  const pessoas = Math.max(1, Number(document.getElementById('dividirPessoas')?.value || 1))
+  const porPessoa = Number(c.total || 0) / pessoas
+  const empresa = nomeEmpresaRecibo()
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Conta Mesa ${esc(c.mesa_num || '')}</title>
+    <style>
+      @page{size:80mm auto;margin:4mm}
+      *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0;background:#fff;font-size:14px}
+      .wrap{width:72mm;margin:0 auto}.center{text-align:center}
+      .empresa{font-size:17px;font-weight:900;line-height:1.15;text-transform:uppercase}
+      .mesa-top{font-size:34px;font-weight:900;line-height:1.05;margin-top:5px;letter-spacing:.02em}
+      .title{font-size:17px;font-weight:900;letter-spacing:.05em;margin-top:2px}
+      .muted{color:#555;font-size:12px;line-height:1.35}.line{border-top:1px dashed #999;margin:10px 0}
+      .meta{font-size:13px;line-height:1.55}.meta b{display:inline-block;min-width:65px}
+      table{width:100%;border-collapse:collapse}td{padding:7px 0;border-bottom:1px dotted #ddd;vertical-align:top}
+      .item b{font-size:15px;line-height:1.25}.valor{text-align:right;white-space:nowrap;font-size:14px;font-weight:800}
+      small{display:block;color:#555;font-size:11px;margin-top:2px}.total{display:flex;justify-content:space-between;font-size:22px;font-weight:900;margin-top:10px}
+      .split{display:flex;justify-content:space-between;font-size:13px;margin-top:6px;color:#333;gap:8px}.foot{font-size:12px;color:#333;text-align:center;line-height:1.4;margin-top:12px;font-weight:700}
+      @media print{button{display:none}}
+    </style></head><body><div class="wrap">
+      <div class="center">
+        <div class="empresa">${esc(empresa)}</div>
+        <div class="mesa-top">MESA ${esc(c.mesa_num || '-')}</div>
+        <div class="title">PRÉ-CONTA</div>
+        <div class="muted">Resumo para conferência do cliente</div>
+      </div>
+      <div class="line"></div>
+      <div class="meta">
+        <div><b>Comanda:</b> #${esc(c.id)}</div>
+        ${c.consumidor ? `<div><b>Cliente:</b> ${esc(c.consumidor)}</div>` : ''}
+        ${c.garcom ? `<div><b>Garçom:</b> ${esc(c.garcom)}</div>` : ''}
+      </div>
+      <div class="line"></div>
+      <table>${linhasItensConta(c)}</table>
+      <div class="total"><span>TOTAL</span><span>${fmtMoeda(c.total || 0)}</span></div>
+      ${pessoas > 1 ? `<div class="split"><span>Dividir em ${pessoas} pessoa(s)</span><b>${fmtMoeda(porPessoa)} cada</b></div>` : ''}
+      <div class="line"></div>
+      <div class="foot">Não é documento fiscal.<br>MesaUp - GHZ Plugin</div>
+    </div></body></html>`
+}
+
+function imprimirContaMesa() {
+  const c = getComanda(comandaAtualId)
+  if (!c || !(c.itens || []).length) return avisoModal('Adicione pelo menos um item antes de imprimir a conta.')
+  imprimirHTML(gerarHTMLContaMesa(c))
+}
+
+function gerarHTMLPedidoPreparo(c, item) {
+  const setor = item.setor_preparo || 'cozinha'
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>Pedido ${tituloSetor(setor)}</title>
+    <style>
+      @page{size:80mm auto;margin:4mm}
+      *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0;background:#fff;font-size:14px}
+      .wrap{width:72mm;margin:0 auto}.center{text-align:center}.mesa-top{font-size:38px;font-weight:900;line-height:1.05;letter-spacing:.02em}
+      .title{font-size:22px;font-weight:900;letter-spacing:.06em;margin-top:4px}.line{border-top:1px dashed #999;margin:10px 0}
+      .meta{font-size:12px;line-height:1.55}.meta b{display:inline-block;min-width:62px}
+      .item{border:2px solid #111;border-radius:8px;padding:12px;margin-top:10px;text-align:center}.qtd{font-size:34px;font-weight:900;line-height:1}.nome{font-size:21px;font-weight:900;margin-top:6px;line-height:1.15}
+      .obs{margin-top:10px;border-top:1px dashed #999;padding-top:8px;font-size:14px;line-height:1.35;text-align:left}.foot{font-size:11px;color:#555;text-align:center;margin-top:12px}
+      @media print{button{display:none}}
+    </style></head><body><div class="wrap">
+      <div class="center">
+        <div class="mesa-top">MESA ${esc(c?.mesa_num || '-')}</div>
+        <div class="title">${tituloSetor(setor)}</div>
+        <div style="font-size:11px;color:#555">Pedido de preparo</div>
+      </div>
+      <div class="line"></div>
+      <div class="meta">
+        <div><b>Comanda:</b> #${esc(c?.id || '')}</div>
+        ${c?.consumidor ? `<div><b>Cliente:</b> ${esc(c.consumidor)}</div>` : ''}
+        ${c?.garcom ? `<div><b>Garçom:</b> ${esc(c.garcom)}</div>` : ''}
+        <div><b>Horário:</b> ${new Date().toLocaleString('pt-BR')}</div>
+      </div>
+      <div class="item">
+        <div class="qtd">${esc(item.qtd)}x</div>
+        <div class="nome">${esc(item.nome)}</div>
+        ${item.obs ? `<div class="obs"><b>Obs:</b> ${esc(item.obs)}</div>` : ''}
+      </div>
+      <div class="foot">MesaUp - pedido para ${tituloSetor(setor).toLowerCase()}</div>
+    </div></body></html>`
+}
+
+function imprimirPedidoPreparo(c, item) {
+  imprimirHTML(gerarHTMLPedidoPreparo(c, item))
+}
+
+function fecharComandaAtual() {
+  const c = getComanda(comandaAtualId)
+  if (!c || !c.itens || c.itens.length === 0) return avisoModal('Adicione pelo menos um item antes de fechar.')
+
+  const forma = document.getElementById('formaPgto').value
+  fecharComanda(comandaAtualId, forma)
+  document.getElementById('modalDetalhe').style.display = 'none'
+  aviso('ok', `Mesa ${c.mesa_num} fechada! Total: ${fmtMoeda(c.total)}`)
+  render()
+}
+
+function cancelarComandaAtual() {
+  const c = getComanda(comandaAtualId)
+  confirmar(`Cancelar a comanda da Mesa ${c?.mesa_num || ''}? Os itens serao perdidos.`, ok => {
+    if (ok) {
+      cancelarComanda(comandaAtualId)
+      document.getElementById('modalDetalhe').style.display = 'none'
+      aviso('ok', 'Comanda cancelada.')
+      render()
+    }
+  })
+}
+
+render()
+abrirComandaDaMesaUrl()
+</script>
+</body>
+</html>

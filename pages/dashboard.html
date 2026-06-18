@@ -1,0 +1,194 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><link rel="stylesheet" href="../css/style.css"><script src="../js/util.js"></script></head>
+<body>
+<div class="page-wrap">
+<div class="form-card" style="padding:14px 16px">
+    <div class="form-row" style="align-items:flex-end">
+      <div class="form-group fg1">
+        <label class="form-label">Periodo</label>
+        <select id="periodoTipo" onchange="aplicarPeriodoRapido()">
+          <option value="hoje">Hoje</option>
+          <option value="ontem">Ontem</option>
+          <option value="7dias">Ultimos 7 dias</option>
+          <option value="mes">Mes atual</option>
+          <option value="ano">Ano atual</option>
+          <option value="personalizado">Personalizado</option>
+        </select>
+      </div>
+      <div class="form-group fg1">
+        <label class="form-label">Inicio</label>
+        <input type="date" id="periodoInicio" onchange="renderDashboard()">
+      </div>
+      <div class="form-group fg1">
+        <label class="form-label">Fim</label>
+        <input type="date" id="periodoFim" onchange="renderDashboard()">
+      </div>
+      <button class="btn btn-primary" onclick="renderDashboard()">Filtrar</button>
+      <div class="form-group" style="min-width:150px">
+        <label class="form-label">Selecionado</label>
+        <div class="quick-chip" id="periodoResumo">Hoje</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div><div class="kpi-label">Mesas Ocupadas</div><div class="kpi-val" id="kpiOcup" style="color:var(--orange)">0</div><div class="kpi-sub" id="kpiLivres">de 0 mesas</div></div><div class="kpi-icon ki-orange">🪑</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Comandas Abertas</div><div class="kpi-val" id="kpiAbertas" style="color:var(--yellow)">0</div><div class="kpi-sub">em andamento</div></div><div class="kpi-icon ki-yellow">📋</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Faturamento Periodo</div><div class="kpi-val sm" id="kpiHoje" style="color:var(--green)">R$ 0,00</div><div class="kpi-sub">comandas e PDV</div></div><div class="kpi-icon ki-green">💵</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Receita do Mes</div><div class="kpi-val sm" id="kpiMes" style="color:var(--primary)">R$ 0,00</div><div class="kpi-sub">mes atual</div></div><div class="kpi-icon ki-orange">📈</div></div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div><div class="kpi-label">Fechadas Periodo</div><div class="kpi-val" id="kpiFechadas">0</div><div class="kpi-sub">comandas</div></div><div class="kpi-icon ki-blue">✅</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Despesas Periodo</div><div class="kpi-val sm" id="kpiDesp" style="color:var(--red)">R$ 0,00</div></div><div class="kpi-icon ki-red">📉</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Saldo Periodo</div><div class="kpi-val sm" id="kpiSaldo">R$ 0,00</div></div><div class="kpi-icon ki-purple">💰</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Alertas Estoque</div><div class="kpi-val" id="kpiEst" style="color:var(--red)">0</div><div class="kpi-sub">abaixo do mínimo</div></div><div class="kpi-icon ki-red">⚠️</div></div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div><div class="kpi-label">Vendas PDV Periodo</div><div class="kpi-val" id="kpiVendasHoje">0</div><div class="kpi-sub">balcao e delivery</div></div><div class="kpi-icon ki-blue" style="font-size:11px;font-weight:900">PDV</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Delivery Pendente</div><div class="kpi-val" id="kpiDelivery" style="color:var(--blue)">0</div><div class="kpi-sub">em preparo/rota</div></div><div class="kpi-icon ki-blue">🚚</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Clientes CRM</div><div class="kpi-val" id="kpiClientes">0</div><div class="kpi-sub">base cadastrada</div></div><div class="kpi-icon ki-purple" style="font-size:11px;font-weight:900">CRM</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Ticket Medio Periodo</div><div class="kpi-val sm" id="kpiTicket">R$ 0,00</div><div class="kpi-sub">por recebimento</div></div><div class="kpi-icon ki-green">🎯</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+    <div class="sec-card" style="margin-bottom:0">
+      <div class="sec-head">Formas de pagamento no periodo</div>
+      <div id="pagamentosHoje" style="padding:14px"></div>
+    </div>
+    <div class="sec-card" style="margin-bottom:0">
+      <div class="sec-head">Produtos mais vendidos no periodo</div>
+      <div id="topProdutos" style="padding:14px"></div>
+    </div>
+  </div>
+
+  <!-- Mesas rápido -->
+  <div class="sec-card">
+    <div class="sec-head">🪑 Status das Mesas <span style="font-size:11px;color:var(--muted)" id="lblMesas"></span></div>
+    <div id="miniMesas" style="display:flex;flex-wrap:wrap;gap:10px;padding:16px"></div>
+  </div>
+
+  <!-- Últimas comandas -->
+  <div class="sec-card">
+    <div class="sec-head">📋 Últimas Comandas Fechadas no periodo</div>
+    <table><thead><tr><th>Mesa</th><th>Itens</th><th>Forma Pgto</th><th>Fechamento</th><th style="text-align:right">Total</th></tr></thead>
+    <tbody id="tbUltimas"></tbody></table>
+  </div>
+</div>
+<script>
+aplicarTemaAtual()
+const { getDashStats, listarMesas } = require('../js/db.js')
+function esc(v) {
+  return String(v || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))
+}
+function ymd(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+function addDias(d, dias) {
+  const x = new Date(d)
+  x.setDate(x.getDate() + dias)
+  return x
+}
+function fmtPeriodo(inicio, fim) {
+  return inicio === fim ? fmtData(inicio) : `${fmtData(inicio)} ate ${fmtData(fim)}`
+}
+function aplicarPeriodoRapido() {
+  const hoje = new Date()
+  const tipo = document.getElementById('periodoTipo').value
+  let inicio = ymd(hoje)
+  let fim = ymd(hoje)
+
+  if (tipo === 'ontem') {
+    inicio = fim = ymd(addDias(hoje, -1))
+  } else if (tipo === '7dias') {
+    inicio = ymd(addDias(hoje, -6))
+  } else if (tipo === 'mes') {
+    inicio = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`
+  } else if (tipo === 'ano') {
+    inicio = `${hoje.getFullYear()}-01-01`
+  } else if (tipo === 'personalizado') {
+    inicio = document.getElementById('periodoInicio').value || inicio
+    fim = document.getElementById('periodoFim').value || fim
+  }
+
+  document.getElementById('periodoInicio').value = inicio
+  document.getElementById('periodoFim').value = fim
+  renderDashboard()
+}
+function getPeriodoFiltro() {
+  return {
+    inicio: document.getElementById('periodoInicio').value || ymd(new Date()),
+    fim: document.getElementById('periodoFim').value || ymd(new Date())
+  }
+}
+function renderDashboard() {
+  try {
+    const filtro = getPeriodoFiltro()
+    const s = getDashStats(filtro)
+    document.getElementById('periodoResumo').textContent = fmtPeriodo(s.periodo.inicio, s.periodo.fim)
+    document.getElementById('kpiOcup').textContent    = s.mesasOcupadas
+    document.getElementById('kpiLivres').textContent  = `de ${s.totalMesas} mesas`
+    document.getElementById('kpiAbertas').textContent = s.comandasAbertas
+    document.getElementById('kpiHoje').textContent    = fmtMoeda(s.faturamentoPeriodo)
+    document.getElementById('kpiMes').textContent     = fmtMoeda(s.faturamentoMes)
+    document.getElementById('kpiFechadas').textContent= s.comandasPeriodo
+    document.getElementById('kpiDesp').textContent    = fmtMoeda(s.despesasPeriodo)
+    document.getElementById('kpiEst').textContent     = s.alertasEstoque
+    document.getElementById('kpiVendasHoje').textContent = s.vendasPeriodo || 0
+    document.getElementById('kpiDelivery').textContent = s.deliveryPendentes || 0
+    document.getElementById('kpiClientes').textContent = s.clientesAtivos || 0
+    document.getElementById('kpiTicket').textContent = fmtMoeda(s.ticketMedioPeriodo || 0)
+
+    const sEl = document.getElementById('kpiSaldo')
+    sEl.textContent = fmtMoeda(s.saldoPeriodo)
+    sEl.style.color = s.saldoPeriodo >= 0 ? 'var(--green)' : 'var(--red)'
+
+    const pagamentos = Object.entries(s.pagamentosPeriodo || {})
+    document.getElementById('pagamentosHoje').innerHTML = pagamentos.length ? pagamentos.map(([forma, valor]) => `
+      <div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:13px;color:var(--fg2)">${esc(forma)}</span>
+        <b style="font-size:13px;color:var(--green)">${fmtMoeda(valor)}</b>
+      </div>
+    `).join('') : '<div class="empty" style="padding:24px">Nenhum recebimento registrado neste periodo.</div>'
+
+    document.getElementById('topProdutos').innerHTML = (s.topProdutos || []).length ? s.topProdutos.map((p, idx) => `
+      <div style="display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span class="badge b-orange" style="justify-content:center">${idx + 1}</span>
+        <div><b style="font-size:13px;color:var(--fg)">${esc(p.nome)}</b><div style="font-size:11px;color:var(--muted)">${p.qtd} un. vendida(s)</div></div>
+        <b style="font-size:13px;color:var(--primary)">${fmtMoeda(p.total)}</b>
+      </div>
+    `).join('') : '<div class="empty" style="padding:24px">Sem produtos vendidos neste periodo.</div>'
+
+    const mesas  = listarMesas()
+    const lblM   = document.getElementById('lblMesas')
+    const miniEl = document.getElementById('miniMesas')
+    lblM.textContent = `${s.mesasOcupadas} ocupada(s) · ${s.mesasLivres} livre(s)`
+    miniEl.innerHTML = mesas.length ? mesas.map(m=>`
+      <div style="background:var(--card2);border:2px solid ${m.status==='ocupada'?'var(--orange)':'var(--green)'};border-radius:10px;padding:10px 16px;text-align:center;min-width:70px">
+        <div style="font-size:18px;font-weight:900;color:var(--fg)">${m.numero}</div>
+        <div style="font-size:10px;font-weight:700;color:${m.status==='ocupada'?'var(--orange)':'var(--green)'};">${m.status.toUpperCase()}</div>
+      </div>`).join('')
+    : '<div style="color:var(--muted);font-size:13px;padding:10px">Nenhuma mesa cadastrada. Vá em Mesas para cadastrar.</div>'
+
+    const tb = document.getElementById('tbUltimas')
+    tb.innerHTML = s.ultimasComanadas.length ? s.ultimasComanadas.map(c=>`
+      <tr>
+        <td><b style="color:var(--fg)">Mesa ${c.mesa_num||'—'}</b></td>
+        <td style="color:var(--muted);font-size:12px">${(c.itens||[]).length} item(s)</td>
+        <td><span class="badge b-blue">${c.forma_pgto||'—'}</span></td>
+        <td style="font-size:12px;color:var(--muted)">${c.fechamento?c.fechamento.slice(0,16).replace('T',' '):'—'}</td>
+        <td style="text-align:right;font-weight:700;color:var(--green)">${fmtMoeda(c.total)}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" class="empty">Nenhuma comanda fechada neste periodo.</td></tr>'
+  } catch(e) { console.error(e) }
+}
+
+aplicarPeriodoRapido()
+</script>
+</body></html>
+

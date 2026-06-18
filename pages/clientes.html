@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="../js/util.js"></script>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="page-header">
+    <div>
+      <div class="page-title">👥 Clientes CRM</div>
+      <div class="page-sub">Historico de compras, contato e fidelidade</div>
+    </div>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div><div class="kpi-label">Clientes</div><div class="kpi-val" id="kpiClientes">0</div><div class="kpi-sub">cadastros ativos</div></div><div class="kpi-icon ki-blue">CRM</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Compras</div><div class="kpi-val" id="kpiCompras">0</div><div class="kpi-sub">registradas no CRM</div></div><div class="kpi-icon ki-green">PDV</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Valor em Clientes</div><div class="kpi-val sm" id="kpiValor">R$ 0,00</div><div class="kpi-sub">total acumulado</div></div><div class="kpi-icon ki-orange">R$</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Aniversarios</div><div class="kpi-val" id="kpiNiver">0</div><div class="kpi-sub">este mes</div></div><div class="kpi-icon ki-purple">VIP</div></div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-card-title" id="formTitulo">Novo Cliente</div>
+    <input type="hidden" id="editId">
+    <div class="form-row">
+      <div class="form-group fg2"><label class="form-label">Nome *</label><input id="nome" placeholder="Nome do cliente"></div>
+      <div class="form-group fg1"><label class="form-label">Telefone / WhatsApp</label><input id="telefone" placeholder="(00) 00000-0000"></div>
+      <div class="form-group fg1"><label class="form-label">Aniversario</label><input type="date" id="aniversario"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group fg3"><label class="form-label">Endereco</label><input id="endereco" placeholder="Rua, numero, bairro"></div>
+      <div class="form-group fg1"><label class="form-label">Origem</label>
+        <select id="origem"><option>MesaUp</option><option>Balcao</option><option>Delivery</option><option>Mesa</option><option>WhatsApp</option></select>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn btn-primary" id="btnSalvar" onclick="salvarCliente()">+ Salvar Cliente</button>
+      <button class="btn-cancel" id="btnCancelar" onclick="cancelarEdicao()">Cancelar</button>
+    </div>
+    <div class="aviso av-ok" id="avisoOk"></div>
+    <div class="aviso av-erro" id="avisoErro"></div>
+  </div>
+
+  <div class="tbl-wrap">
+    <div class="tbl-top">
+      <span class="tbl-title">Base de clientes</span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="search-box" id="busca" placeholder="Buscar cliente..." oninput="render()">
+        <select class="search-box" id="periodoTipo" onchange="aplicarPeriodoRapido()" style="width:145px">
+          <option value="">Todos periodos</option>
+          <option value="hoje">Hoje</option>
+          <option value="7dias">Ultimos 7 dias</option>
+          <option value="mes">Mes atual</option>
+          <option value="ano">Ano atual</option>
+          <option value="personalizado">Personalizado</option>
+        </select>
+        <input class="search-box" type="date" id="periodoInicio" onchange="render()" style="width:135px">
+        <input class="search-box" type="date" id="periodoFim" onchange="render()" style="width:135px">
+        <span class="tbl-count" id="count"></span>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Cliente</th>
+          <th>Contato</th>
+          <th>Origem</th>
+          <th style="text-align:center">Compras</th>
+          <th style="text-align:right">Total gasto</th>
+          <th>Ultima compra</th>
+          <th style="text-align:center">Acoes</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+aplicarTemaAtual()
+const { listarClientes, getCliente, inserirCliente, atualizarCliente, deletarCliente } = require('../js/db.js')
+
+function esc(v) {
+  return String(v || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))
+}
+function ymd(d) {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+function addDias(d, dias) {
+  const x = new Date(d)
+  x.setDate(x.getDate() + dias)
+  return x
+}
+function dataCliente(c) {
+  return String(c.ultima_compra || c.criado_em || '').slice(0, 10)
+}
+function aplicarPeriodoRapido() {
+  const tipo = document.getElementById('periodoTipo').value
+  const hoje = new Date()
+  let inicio = ''
+  let fim = ''
+  if (tipo === 'hoje') {
+    inicio = fim = ymd(hoje)
+  } else if (tipo === '7dias') {
+    inicio = ymd(addDias(hoje, -6)); fim = ymd(hoje)
+  } else if (tipo === 'mes') {
+    inicio = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-01`; fim = ymd(hoje)
+  } else if (tipo === 'ano') {
+    inicio = `${hoje.getFullYear()}-01-01`; fim = ymd(hoje)
+  } else if (tipo === 'personalizado') {
+    inicio = document.getElementById('periodoInicio').value
+    fim = document.getElementById('periodoFim').value
+  }
+  document.getElementById('periodoInicio').value = inicio
+  document.getElementById('periodoFim').value = fim
+  render()
+}
+
+function salvarCliente() {
+  const id = Number(document.getElementById('editId').value || 0)
+  const nome = document.getElementById('nome').value.trim()
+  if (!nome) return aviso('erro', 'Informe o nome do cliente.')
+
+  const dados = {
+    id,
+    nome,
+    telefone: document.getElementById('telefone').value.trim(),
+    endereco: document.getElementById('endereco').value.trim(),
+    aniversario: document.getElementById('aniversario').value || '',
+    origem: document.getElementById('origem').value
+  }
+
+  if (id) {
+    atualizarCliente(dados)
+    aviso('ok', 'Cliente atualizado.')
+  } else {
+    inserirCliente(dados)
+    aviso('ok', 'Cliente salvo.')
+  }
+  cancelarEdicao()
+  render()
+}
+
+function editarCliente(id) {
+  const c = getCliente(id)
+  if (!c) return
+  document.getElementById('editId').value = c.id
+  document.getElementById('nome').value = c.nome || ''
+  document.getElementById('telefone').value = c.telefone || ''
+  document.getElementById('endereco').value = c.endereco || ''
+  document.getElementById('aniversario').value = c.aniversario || ''
+  document.getElementById('origem').value = c.origem || 'MesaUp'
+  document.getElementById('formTitulo').textContent = 'Editar Cliente'
+  document.getElementById('btnSalvar').textContent = 'Salvar Alteracao'
+  document.getElementById('btnCancelar').style.display = 'inline-flex'
+  window.scrollTo({top:0, behavior:'smooth'})
+}
+
+function cancelarEdicao() {
+  ;['editId','nome','telefone','endereco','aniversario'].forEach(id => document.getElementById(id).value = '')
+  document.getElementById('origem').value = 'MesaUp'
+  document.getElementById('formTitulo').textContent = 'Novo Cliente'
+  document.getElementById('btnSalvar').textContent = '+ Salvar Cliente'
+  document.getElementById('btnCancelar').style.display = 'none'
+}
+
+function excluirCliente(id) {
+  confirmar('Excluir este cliente?', ok => {
+    if (ok) {
+      deletarCliente(id)
+      render()
+    }
+  })
+}
+
+function render() {
+  const busca = document.getElementById('busca').value
+  let lista = listarClientes(busca)
+  const inicio = document.getElementById('periodoInicio').value
+  const fim = document.getElementById('periodoFim').value
+  if (inicio || fim) {
+    lista = lista.filter(c => {
+      const d = dataCliente(c)
+      if (!d) return false
+      return (!inicio || d >= inicio) && (!fim || d <= fim)
+    })
+  }
+  const compras = lista.reduce((s, c) => s + Number(c.total_compras || 0), 0)
+  const valor = lista.reduce((s, c) => s + Number(c.total_gasto || 0), 0)
+  const mes = String(new Date().getMonth() + 1).padStart(2, '0')
+  const aniversarios = lista.filter(c => String(c.aniversario || '').slice(5,7) === mes).length
+
+  document.getElementById('kpiClientes').textContent = lista.length
+  document.getElementById('kpiCompras').textContent = compras
+  document.getElementById('kpiValor').textContent = fmtMoeda(valor)
+  document.getElementById('kpiNiver').textContent = aniversarios
+  document.getElementById('count').textContent = lista.length + ' cliente(s)'
+
+  document.getElementById('tbody').innerHTML = lista.length ? lista.map(c => `
+    <tr>
+      <td><b style="color:var(--fg)">${esc(c.nome)}</b>${c.endereco ? `<div style="font-size:11px;color:var(--muted)">${esc(c.endereco)}</div>` : ''}</td>
+      <td>${esc(c.telefone || '-')}</td>
+      <td><span class="badge b-blue">${esc(c.origem || 'MesaUp')}</span></td>
+      <td style="text-align:center">${Number(c.total_compras || 0)}</td>
+      <td style="text-align:right;font-weight:800;color:var(--green)">${fmtMoeda(c.total_gasto || 0)}</td>
+      <td style="font-size:12px;color:var(--muted)">${c.ultima_compra ? esc(String(c.ultima_compra).slice(0,16).replace('T',' ')) : '-'}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-edit" onclick="editarCliente(${c.id})">Editar</button>
+        <button class="btn-danger" onclick="excluirCliente(${c.id})">Excluir</button>
+      </td>
+    </tr>
+  `).join('') : '<tr><td colspan="7" class="empty">Nenhum cliente cadastrado. Vendas com nome de cliente entram aqui automaticamente.</td></tr>'
+}
+
+cancelarEdicao()
+render()
+</script>
+</body>
+</html>

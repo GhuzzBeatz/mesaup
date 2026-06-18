@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="../js/util.js"></script>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="page-header">
+    <div>
+      <div class="page-title">🧾 PDV & Delivery</div>
+      <div class="page-sub">Venda rapida no balcao, retirada ou entrega</div>
+    </div>
+    <div class="quick-chip" id="pdvResumo">Carrinho vazio</div>
+  </div>
+
+  <div class="pos-layout">
+    <div class="pos-products">
+      <div class="pos-toolbar">
+        <input class="search-box" id="buscaProduto" placeholder="Buscar produto no cardapio..." oninput="renderProdutos()">
+        <select class="search-box" id="filtroCategoria" onchange="renderProdutos()">
+          <option value="">Todas categorias</option>
+        </select>
+      </div>
+      <div id="gridProdutos" class="product-grid"></div>
+    </div>
+
+    <div class="cart-panel">
+      <div class="cart-head">
+        <div>
+          <div class="cart-title">Pedido atual</div>
+          <div class="cart-sub" id="cartSub">0 item(s)</div>
+        </div>
+        <button class="btn btn-ghost" onclick="limparCarrinho()">Limpar</button>
+      </div>
+
+      <div class="type-switch">
+        <button id="tipoBalcao" class="type-btn active" onclick="setTipo('Balcao')">Balcao</button>
+        <button id="tipoDelivery" class="type-btn" onclick="setTipo('Delivery')">Delivery</button>
+      </div>
+
+      <div id="cartItens" class="cart-items"></div>
+
+      <div class="form-row">
+        <div class="form-group fg2">
+          <label class="form-label">Cliente</label>
+          <input id="clienteNome" placeholder="Nome do cliente">
+        </div>
+        <div class="form-group fg1">
+          <label class="form-label">Telefone</label>
+          <input id="clienteTelefone" placeholder="WhatsApp">
+        </div>
+      </div>
+
+      <div class="form-row delivery-only" style="display:none">
+        <div class="form-group fg3">
+          <label class="form-label">Endereco de entrega</label>
+          <input id="clienteEndereco" placeholder="Rua, numero, bairro">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group fg2">
+          <label class="form-label">Pagamento</label>
+          <select id="formaPgto">
+            <option>Dinheiro</option>
+            <option>PIX</option>
+            <option>Cartao de Credito</option>
+            <option>Cartao de Debito</option>
+            <option>Outro</option>
+          </select>
+        </div>
+        <div class="form-group fg1 delivery-only" style="display:none">
+          <label class="form-label">Taxa entrega</label>
+          <input type="number" id="taxaEntrega" value="0" min="0" step="0.01" oninput="renderCarrinho()">
+        </div>
+        <div class="form-group fg1">
+          <label class="form-label">Desconto</label>
+          <input type="number" id="desconto" value="0" min="0" step="0.01" oninput="renderCarrinho()">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group fg3">
+          <label class="form-label">Observacao</label>
+          <input id="obsVenda" placeholder="Ex: retirar no balcao, sem troco, referencia...">
+        </div>
+      </div>
+
+      <div class="totals-box">
+        <div><span>Subtotal</span><b id="subtotal">R$ 0,00</b></div>
+        <div><span>Taxa entrega</span><b id="taxaResumo">R$ 0,00</b></div>
+        <div><span>Desconto</span><b id="descontoResumo">R$ 0,00</b></div>
+        <div class="total-line"><span>Total</span><b id="total">R$ 0,00</b></div>
+      </div>
+
+      <button class="btn btn-primary checkout-btn" onclick="finalizarVenda()">Finalizar venda</button>
+      <div class="aviso av-ok" id="avisoOk"></div>
+      <div class="aviso av-erro" id="avisoErro"></div>
+    </div>
+  </div>
+
+  <div class="sec-card">
+    <div class="sec-head">Ultimas vendas e entregas <span style="font-size:11px;color:var(--muted)" id="histCount"></span></div>
+    <div id="historicoVendas" class="order-list"></div>
+  </div>
+</div>
+
+<script>
+aplicarTemaAtual()
+const { listarCardapio, registrarVenda, listarVendas, atualizarStatusVenda, getConfig } = require('../js/db.js')
+
+let tipoAtual = 'Balcao'
+let carrinho = []
+let produtosCache = []
+
+function esc(v) {
+  return String(v || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))
+}
+
+function carregarCategorias() {
+  const cats = [...new Set(listarCardapio().map(p => p.categoria || 'Outros'))].sort()
+  document.getElementById('filtroCategoria').innerHTML = '<option value="">Todas categorias</option>' + cats.map(c => `<option>${esc(c)}</option>`).join('')
+}
+
+function renderProdutos() {
+  const busca = document.getElementById('buscaProduto').value
+  const cat = document.getElementById('filtroCategoria').value
+  produtosCache = listarCardapio(busca).filter(p => Number(p.disponivel || 0) !== 0)
+  if (cat) produtosCache = produtosCache.filter(p => (p.categoria || 'Outros') === cat)
+
+  const el = document.getElementById('gridProdutos')
+  el.innerHTML = produtosCache.length ? produtosCache.map(p => `
+    <button class="product-tile" onclick="adicionarProduto(${p.id})">
+      <span class="product-name">${esc(p.nome)}</span>
+      <span class="product-meta">${esc(p.categoria || 'Outros')} · Estoque ${Number(p.quantidade || 0)}</span>
+      <span class="product-price">${fmtMoeda(p.preco)}</span>
+    </button>
+  `).join('') : '<div class="empty">Nenhum produto disponivel no cardapio.</div>'
+}
+
+function adicionarProduto(id) {
+  const p = listarCardapio().find(x => x.id === id)
+  if (!p) return
+  const item = carrinho.find(x => x.produto_id === id)
+  if (item) item.qtd += 1
+  else carrinho.push({ produto_id:id, nome:p.nome, preco:Number(p.preco || 0), qtd:1 })
+  renderCarrinho()
+}
+
+function alterarQtd(id, delta) {
+  const item = carrinho.find(x => x.produto_id === id)
+  if (!item) return
+  item.qtd += delta
+  if (item.qtd <= 0) carrinho = carrinho.filter(x => x.produto_id !== id)
+  renderCarrinho()
+}
+
+function limparCarrinho() {
+  carrinho = []
+  renderCarrinho()
+}
+
+function getTotais() {
+  const subtotal = carrinho.reduce((s, it) => s + Number(it.preco || 0) * Number(it.qtd || 0), 0)
+  const taxa = tipoAtual === 'Delivery' ? Number(document.getElementById('taxaEntrega').value || 0) : 0
+  const desconto = Number(document.getElementById('desconto').value || 0)
+  return { subtotal, taxa, desconto, total: Math.max(0, subtotal + taxa - desconto) }
+}
+
+function renderCarrinho() {
+  const el = document.getElementById('cartItens')
+  el.innerHTML = carrinho.length ? carrinho.map(it => `
+    <div class="cart-line">
+      <div>
+        <b>${esc(it.nome)}</b>
+        <span>${fmtMoeda(it.preco)} un.</span>
+      </div>
+      <div class="qty-control">
+        <button onclick="alterarQtd(${it.produto_id},-1)">-</button>
+        <strong>${it.qtd}</strong>
+        <button onclick="alterarQtd(${it.produto_id},1)">+</button>
+      </div>
+      <div class="line-total">${fmtMoeda(it.preco * it.qtd)}</div>
+    </div>
+  `).join('') : '<div class="empty">Clique nos produtos para montar o pedido.</div>'
+
+  const t = getTotais()
+  document.getElementById('subtotal').textContent = fmtMoeda(t.subtotal)
+  document.getElementById('taxaResumo').textContent = fmtMoeda(t.taxa)
+  document.getElementById('descontoResumo').textContent = fmtMoeda(t.desconto)
+  document.getElementById('total').textContent = fmtMoeda(t.total)
+  document.getElementById('cartSub').textContent = carrinho.reduce((s, it) => s + it.qtd, 0) + ' item(s)'
+  document.getElementById('pdvResumo').textContent = carrinho.length ? `${tipoAtual} · ${fmtMoeda(t.total)}` : 'Carrinho vazio'
+}
+
+function setTipo(tipo) {
+  tipoAtual = tipo
+  document.getElementById('tipoBalcao').classList.toggle('active', tipo === 'Balcao')
+  document.getElementById('tipoDelivery').classList.toggle('active', tipo === 'Delivery')
+  document.querySelectorAll('.delivery-only').forEach(el => el.style.display = tipo === 'Delivery' ? '' : 'none')
+  renderCarrinho()
+}
+
+function finalizarVenda() {
+  if (!carrinho.length) return aviso('erro', 'Adicione pelo menos um produto.')
+  const cliente = document.getElementById('clienteNome').value.trim()
+  const telefone = document.getElementById('clienteTelefone').value.trim()
+  const endereco = document.getElementById('clienteEndereco').value.trim()
+  if (tipoAtual === 'Delivery' && !endereco) return aviso('erro', 'Informe o endereco para delivery.')
+
+  const venda = registrarVenda({
+    tipo: tipoAtual,
+    cliente_nome: cliente,
+    telefone,
+    endereco,
+    forma_pgto: document.getElementById('formaPgto').value,
+    taxa_entrega: tipoAtual === 'Delivery' ? Number(document.getElementById('taxaEntrega').value || 0) : 0,
+    desconto: Number(document.getElementById('desconto').value || 0),
+    obs: document.getElementById('obsVenda').value.trim(),
+    itens: carrinho
+  })
+
+  aviso('ok', `Venda #${venda.id} registrada: ${fmtMoeda(venda.total)}`)
+  if (venda.tipo === 'Delivery') {
+    confirmar('Imprimir notinha para o motoboy?', ok => {
+      if (ok) imprimirNotinhaVenda(venda)
+    }, 'Imprimir')
+  }
+  carrinho = []
+  ;['clienteNome','clienteTelefone','clienteEndereco','obsVenda'].forEach(id => document.getElementById(id).value = '')
+  document.getElementById('taxaEntrega').value = '0'
+  document.getElementById('desconto').value = '0'
+  renderCarrinho()
+  renderHistorico()
+}
+
+function mudarStatus(id, status) {
+  atualizarStatusVenda(id, status)
+  renderHistorico()
+}
+
+function gerarHTMLNotinha(v) {
+  const nomeBar = getConfig('bar_nome') || 'MesaUp'
+  const telefoneBar = getConfig('bar_telefone') || ''
+  const enderecoBar = getConfig('bar_endereco') || ''
+  const itens = (v.itens || []).map(it => `
+    <tr>
+      <td>${Number(it.qtd || 0)}x ${esc(it.nome)}</td>
+      <td style="text-align:right">${fmtMoeda(Number(it.preco || 0) * Number(it.qtd || 0))}</td>
+    </tr>
+  `).join('')
+
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
+  <title>Notinha Delivery #${v.id}</title>
+  <style>
+    *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0;padding:14px;background:#fff}
+    .nota{width:302px;max-width:100%;margin:0 auto}.center{text-align:center}.brand{font-size:18px;font-weight:900}
+    .muted{font-size:11px;color:#555;line-height:1.35}.sep{border-top:1px dashed #999;margin:10px 0}
+    .label{font-size:10px;font-weight:800;text-transform:uppercase;margin-bottom:2px}.txt{font-size:12px;line-height:1.35}
+    table{width:100%;border-collapse:collapse;font-size:12px}td{padding:4px 0;border-bottom:1px dotted #ddd;vertical-align:top}
+    .total{display:flex;justify-content:space-between;font-size:16px;font-weight:900;margin-top:8px}
+    .small-row{display:flex;justify-content:space-between;font-size:12px;margin:3px 0}.footer{font-size:10px;text-align:center;color:#555;margin-top:12px}
+    @media print{body{padding:0}.nota{width:72mm}}
+  </style></head><body><div class="nota">
+    <div class="center"><div class="brand">${esc(nomeBar)}</div><div class="muted">${esc(telefoneBar)}${enderecoBar ? '<br>' + esc(enderecoBar) : ''}</div></div>
+    <div class="sep"></div>
+    <div class="center"><b>DELIVERY #${v.id}</b><div class="muted">${esc(String(v.criado_em || '').slice(0,16).replace('T',' '))}</div></div>
+    <div class="sep"></div>
+    <div class="label">Cliente</div><div class="txt">${esc(v.cliente_nome || 'Cliente')} ${v.telefone ? ' - ' + esc(v.telefone) : ''}</div>
+    <div class="label" style="margin-top:8px">Endereco</div><div class="txt">${esc(v.endereco || '-')}</div>
+    ${v.obs ? `<div class="label" style="margin-top:8px">Obs</div><div class="txt">${esc(v.obs)}</div>` : ''}
+    <div class="sep"></div>
+    <table>${itens}</table>
+    <div class="small-row"><span>Subtotal</span><b>${fmtMoeda(v.subtotal || 0)}</b></div>
+    <div class="small-row"><span>Taxa entrega</span><b>${fmtMoeda(v.taxa_entrega || 0)}</b></div>
+    <div class="small-row"><span>Desconto</span><b>${fmtMoeda(v.desconto || 0)}</b></div>
+    <div class="total"><span>Total</span><span>${fmtMoeda(v.total || 0)}</span></div>
+    <div class="sep"></div>
+    <div class="txt"><b>Pagamento:</b> ${esc(v.forma_pgto || '-')}<br><b>Status:</b> ${esc(v.status || '-')}</div>
+    <div class="footer">MesaUp - notinha do motoboy</div>
+  </div></body></html>`
+}
+
+function imprimirNotinhaVenda(v) {
+  const w = window.open('', '_blank')
+  w.document.write(gerarHTMLNotinha(v))
+  w.document.close()
+  setTimeout(() => w.print(), 400)
+}
+
+function imprimirNotinha(id) {
+  const v = listarVendas().find(x => x.id === id)
+  if (v) imprimirNotinhaVenda(v)
+}
+
+function renderHistorico() {
+  const vendas = listarVendas().slice(0, 10)
+  document.getElementById('histCount').textContent = vendas.length + ' registro(s)'
+  const el = document.getElementById('historicoVendas')
+  el.innerHTML = vendas.length ? vendas.map(v => `
+    <div class="order-row">
+      <div>
+        <div class="order-title">#${v.id} · ${esc(v.tipo)} <span class="badge ${v.tipo === 'Delivery' ? 'b-blue' : 'b-green'}">${esc(v.status)}</span></div>
+        <div class="order-meta">${esc(v.cliente_nome || 'Cliente')} · ${(v.itens || []).length} item(s) · ${esc(v.forma_pgto || '')}</div>
+        ${v.endereco ? `<div class="order-meta">${esc(v.endereco)}</div>` : ''}
+      </div>
+      <div class="order-actions">
+        <strong>${fmtMoeda(v.total)}</strong>
+        ${v.tipo === 'Delivery' ? `<button class="btn btn-ghost" onclick="imprimirNotinha(${v.id})">Notinha</button>` : ''}
+        ${v.tipo === 'Delivery' && v.status !== 'entregue' ? `
+          <button class="btn btn-ghost" onclick="mudarStatus(${v.id},'saiu para entrega')">Saiu</button>
+          <button class="btn btn-primary" onclick="mudarStatus(${v.id},'entregue')">Entregue</button>
+        ` : ''}
+      </div>
+    </div>
+  `).join('') : '<div class="empty">Nenhuma venda avulsa registrada ainda.</div>'
+}
+
+carregarCategorias()
+renderProdutos()
+renderCarrinho()
+renderHistorico()
+</script>
+</body>
+</html>

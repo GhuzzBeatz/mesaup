@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><link rel="stylesheet" href="../css/style.css"><script src="../js/util.js"></script></head>
+<body>
+<div class="page-wrap">
+  <div class="page-header">
+    <div>
+      <div class="page-title">📦 Estoque</div>
+      <div class="page-sub">Gerencie seus produtos — os do Cardápio aparecem no QR Code para o cliente</div>
+    </div>
+  </div>
+
+  <!-- FORM -->
+  <div class="form-card">
+    <div class="form-card-title" id="formTitulo">Novo Produto</div>
+
+    <!-- TIPO DO PRODUTO -->
+    <div style="display:flex;gap:10px;margin-bottom:16px">
+      <button id="btnTipoCard" onclick="setTipo('cardapio')"
+        style="flex:1;padding:12px;border-radius:10px;border:2px solid var(--primary);background:var(--primary-bg);color:var(--primary);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s">
+        🍽️ Produto do Cardápio<br><span style="font-size:11px;font-weight:400;opacity:.8">Aparece no QR Code para o cliente · tem preço de venda</span>
+      </button>
+      <button id="btnTipoInt" onclick="setTipo('interno')"
+        style="flex:1;padding:12px;border-radius:10px;border:2px solid var(--border);background:transparent;color:var(--muted);font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;transition:all .15s">
+        🔒 Produto Interno<br><span style="font-size:11px;font-weight:400;opacity:.8">Só para controle de estoque · não aparece para o cliente</span>
+      </button>
+    </div>
+    <input type="hidden" id="tipoAtual" value="cardapio">
+
+    <div class="form-row">
+      <div class="form-group fg3"><label class="form-label">Nome *</label><input id="nome" placeholder="Ex: Cerveja Skol Lata, Carvão 5kg..."></div>
+      <div class="form-group fg2"><label class="form-label">Categoria</label>
+        <select id="categoria">
+          <option value="">Selecione...</option>
+          <option>Bebidas</option><option>Cervejas</option><option>Drinks</option>
+          <option>Porções</option><option>Lanches</option><option>Pratos</option>
+          <option>Sobremesas</option><option>Não Alcoólicos</option>
+          <option>Insumos</option><option>Limpeza</option><option>Outro</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group fg1"><label class="form-label">Estoque Atual</label><input type="number" id="quantidade" placeholder="0" min="0" step="0.01"></div>
+      <div class="form-group fg1"><label class="form-label">Qtd Mínima para Aviso</label><input type="number" id="qtd_minima" placeholder="0" min="0" step="0.01"></div>
+      <!-- Preço só aparece para cardápio -->
+      <div class="form-group fg1" id="campoPreco"><label class="form-label">Preço de Venda (R$) *</label><input type="number" id="preco" placeholder="0,00" min="0" step="0.01"></div>
+      <!-- QR Code só aparece para cardápio -->
+      <div class="form-group fg1" id="campoDisp"><label class="form-label">QR Code</label>
+        <select id="disponivel"><option value="1">📱 Disponível</option><option value="0">🚫 Oculto</option></select>
+      </div>
+      <div class="form-group fg1" id="campoSetor"><label class="form-label">Saída do Pedido</label>
+        <select id="setor_preparo">
+          <option value="">Produto simples</option>
+          <option value="cozinha">🍳 Cozinha</option>
+          <option value="balcao">🥤 Balcão</option>
+        </select>
+      </div>
+      <div class="form-group fg1"><label class="form-label">Validade</label><input type="date" id="validade"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group fg2"><label class="form-label">Fornecedor</label><input id="fornecedor" placeholder="Nome do fornecedor"></div>
+      <div class="form-group fg2"><label class="form-label">Observações</label><input id="obs" placeholder="Lote, localização, descrição..."></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px">
+      <button class="btn btn-primary" id="btnSalvar" onclick="salvar()">+ Salvar</button>
+      <button class="btn-cancel" id="btnCancelar" onclick="cancelar()">Cancelar</button>
+    </div>
+    <div class="aviso av-erro" id="avisoErro"></div>
+    <div class="aviso av-ok"   id="avisoOk"></div>
+  </div>
+
+  <!-- ABAS DE VISUALIZAÇÃO -->
+  <div style="display:flex;gap:6px;margin-bottom:16px">
+    <button id="abaBtn0" onclick="setAba(0)"
+      style="padding:9px 18px;border-radius:8px;border:2px solid var(--primary);background:var(--primary-bg);color:var(--primary);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+      🍽️ Cardápio <span id="ctCard" style="background:var(--primary);color:#fff;border-radius:99px;padding:1px 7px;font-size:11px;margin-left:4px">0</span>
+    </button>
+    <button id="abaBtn1" onclick="setAba(1)"
+      style="padding:9px 18px;border-radius:8px;border:2px solid var(--border);background:transparent;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">
+      🔒 Produtos Internos <span id="ctInt" style="background:var(--border2);color:var(--fg);border-radius:99px;padding:1px 7px;font-size:11px;margin-left:4px">0</span>
+    </button>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <input class="search-box" id="busca" placeholder="🔍 Buscar..." oninput="render()" style="width:190px">
+      <select class="search-box" id="filtroAlerta" onchange="render()" style="width:150px">
+        <option value="">Todos</option><option value="alerta">⚠️ Só alertas</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- TABELA CARDÁPIO -->
+  <div id="secaoCardapio">
+    <div class="tbl-wrap">
+      <div class="tbl-top">
+        <span class="tbl-title">🍽️ Produtos do Cardápio</span>
+        <span style="font-size:12px;color:var(--muted)">Aparecem no QR Code para o cliente</span>
+      </div>
+      <table>
+        <thead><tr><th>Produto</th><th>Categoria</th><th style="text-align:center">Estoque Atual</th><th style="text-align:right">Preço Venda</th><th style="text-align:center">QR Code</th><th style="text-align:center">Preparo</th><th>Validade</th><th style="text-align:center">Ações</th></tr></thead>
+        <tbody id="tbodyCard"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TABELA INTERNOS -->
+  <div id="secaoInternos" style="display:none">
+    <div class="tbl-wrap">
+      <div class="tbl-top">
+        <span class="tbl-title">🔒 Produtos Internos</span>
+        <span style="font-size:12px;color:var(--muted)">Somente para controle de estoque — não aparecem para o cliente</span>
+      </div>
+      <table>
+        <thead><tr><th>Produto</th><th>Categoria</th><th style="text-align:center">Estoque Atual</th><th style="text-align:center">Mínimo para Aviso</th><th>Fornecedor</th><th>Validade</th><th style="text-align:center">Ações</th></tr></thead>
+        <tbody id="tbodyInt"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+<script>
+aplicarTemaAtual()
+const { listarEstoque, getEstoqueItem, inserirEstoque, atualizarEstoque, deletarEstoque, toggleDisponivel, toggleInterno } = require('../js/db.js')
+let editandoId = null
+let abaAtual   = 0  // 0 = cardápio, 1 = internos
+
+// ── TIPO DO PRODUTO (toggle) ───────────────────────────────
+function setTipo(tipo) {
+  document.getElementById('tipoAtual').value = tipo
+  const isCard = tipo === 'cardapio'
+  // Botões
+  document.getElementById('btnTipoCard').style.border      = isCard ? '2px solid var(--primary)' : '2px solid var(--border)'
+  document.getElementById('btnTipoCard').style.background  = isCard ? 'var(--primary-bg)' : 'transparent'
+  document.getElementById('btnTipoCard').style.color       = isCard ? 'var(--primary)' : 'var(--muted)'
+  document.getElementById('btnTipoInt').style.border       = !isCard ? '2px solid var(--orange)' : '2px solid var(--border)'
+  document.getElementById('btnTipoInt').style.background   = !isCard ? 'var(--orange-bg)' : 'transparent'
+  document.getElementById('btnTipoInt').style.color        = !isCard ? 'var(--orange)' : 'var(--muted)'
+  // Campos de preço e disponível só para cardápio
+  document.getElementById('campoPreco').style.display = isCard ? '' : 'none'
+  document.getElementById('campoDisp').style.display  = isCard ? '' : 'none'
+  document.getElementById('campoSetor').style.display = isCard ? '' : 'none'
+  if (!isCard) { document.getElementById('preco').value = ''; document.getElementById('disponivel').value = '1'; document.getElementById('setor_preparo').value = '' }
+}
+
+// ── ABAS ───────────────────────────────────────────────────
+function setAba(idx) {
+  abaAtual = idx
+  document.getElementById('secaoCardapio').style.display  = idx === 0 ? '' : 'none'
+  document.getElementById('secaoInternos').style.display  = idx === 1 ? '' : 'none'
+  const btnCard = document.getElementById('abaBtn0')
+  const btnInt  = document.getElementById('abaBtn1')
+  btnCard.style.border     = idx===0 ? '2px solid var(--primary)' : '2px solid var(--border)'
+  btnCard.style.background = idx===0 ? 'var(--primary-bg)' : 'transparent'
+  btnCard.style.color      = idx===0 ? 'var(--primary)' : 'var(--muted)'
+  btnInt.style.border      = idx===1 ? '2px solid var(--orange)' : '2px solid var(--border)'
+  btnInt.style.background  = idx===1 ? 'var(--orange-bg)' : 'transparent'
+  btnInt.style.color       = idx===1 ? 'var(--orange)' : 'var(--muted)'
+}
+
+// ── CRUD ───────────────────────────────────────────────────
+function salvar() {
+  const nome  = document.getElementById('nome').value.trim()
+  if (!nome) return aviso('erro', 'Informe o nome do produto.')
+  const tipo   = document.getElementById('tipoAtual').value
+  const isCard = tipo === 'cardapio'
+  const preco  = Number(document.getElementById('preco').value || 0)
+  if (isCard && preco <= 0) return aviso('erro', 'Informe o preço de venda do produto.')
+
+  const d = {
+    nome,
+    categoria:  document.getElementById('categoria').value,
+    unidade:    'un',
+    quantidade: Number(document.getElementById('quantidade').value || 0),
+    qtd_minima: Number(document.getElementById('qtd_minima').value || 0),
+    preco:      isCard ? preco : 0,
+    interno:    isCard ? 0 : 1,
+    disponivel: isCard ? Number(document.getElementById('disponivel').value) : 0,
+    setor_preparo: isCard ? document.getElementById('setor_preparo').value : '',
+    validade:   document.getElementById('validade').value || null,
+    fornecedor: document.getElementById('fornecedor').value.trim(),
+    obs:        document.getElementById('obs').value.trim()
+  }
+
+  if (editandoId) { atualizarEstoque({...d, id: editandoId}); aviso('ok', 'Produto atualizado!'); cancelar() }
+  else             { inserirEstoque(d); aviso('ok', `"${nome}" salvo!`); limpar() }
+  render()
+}
+
+function editar(id) {
+  const e = getEstoqueItem(id); if (!e) return
+  const isCard = !Number(e.interno || 0)
+  setTipo(isCard ? 'cardapio' : 'interno')
+  document.getElementById('nome').value       = e.nome
+  document.getElementById('categoria').value  = e.categoria || ''
+  document.getElementById('quantidade').value = e.quantidade || 0
+  document.getElementById('qtd_minima').value = e.qtd_minima || 0
+  document.getElementById('preco').value      = e.preco || 0
+  document.getElementById('disponivel').value = String(e.disponivel !== undefined ? e.disponivel : 1)
+  document.getElementById('setor_preparo').value = e.setor_preparo || ''
+  document.getElementById('validade').value   = e.validade || ''
+  document.getElementById('fornecedor').value = e.fornecedor || ''
+  document.getElementById('obs').value        = e.obs || ''
+  document.getElementById('formTitulo').textContent    = '✏️ Editar Produto'
+  document.getElementById('btnSalvar').textContent     = '💾 Salvar Alteração'
+  document.getElementById('btnCancelar').style.display = 'inline-flex'
+  editandoId = id; window.scrollTo({top:0,behavior:'smooth'})
+}
+
+function cancelar() {
+  limpar(); editandoId = null
+  setTipo('cardapio')
+  document.getElementById('formTitulo').textContent    = 'Novo Produto'
+  document.getElementById('btnSalvar').textContent     = '+ Salvar'
+  document.getElementById('btnCancelar').style.display = 'none'
+}
+
+function limpar() {
+  ['nome','obs','fornecedor','preco'].forEach(i => document.getElementById(i).value = '')
+  document.getElementById('categoria').value  = ''
+  document.getElementById('quantidade').value = ''
+  document.getElementById('qtd_minima').value = ''
+  document.getElementById('disponivel').value = '1'
+  document.getElementById('setor_preparo').value = ''
+  document.getElementById('validade').value   = ''
+}
+
+function excluir(id) {
+  confirmar('Excluir este produto permanentemente?', ok => { if(ok){ deletarEstoque(id); render() } })
+}
+
+function alternarDisponivel(id, val) { toggleDisponivel(id, val); render() }
+
+function badgePreparo(setor) {
+  if (setor === 'cozinha') return '<span class="badge b-orange">🍳 Cozinha</span>'
+  if (setor === 'balcao') return '<span class="badge b-blue">🥤 Balcão</span>'
+  return '<span class="badge b-green">Simples</span>'
+}
+
+// ── RENDER ─────────────────────────────────────────────────
+function render() {
+  const busca  = (document.getElementById('busca')?.value || '').toLowerCase()
+  const alerta = document.getElementById('filtroAlerta')?.value || ''
+  let todos    = listarEstoque(busca)
+  if (alerta === 'alerta') todos = todos.filter(e => Number(e.quantidade||0) <= Number(e.qtd_minima||0))
+
+  const cardItens = todos.filter(e => !Number(e.interno||0))
+  const intItens  = todos.filter(e => Number(e.interno||0))
+
+  // Contadores nas abas
+  document.getElementById('ctCard').textContent = listarEstoque().filter(e => !Number(e.interno||0)).length
+  document.getElementById('ctInt').textContent  = listarEstoque().filter(e =>  Number(e.interno||0)).length
+
+  // ── TABELA CARDÁPIO ──
+  document.getElementById('tbodyCard').innerHTML = cardItens.length ? cardItens.map(e => {
+    const alrt = Number(e.quantidade||0) <= Number(e.qtd_minima||0)
+    const venc = e.validade && new Date(e.validade) < new Date()
+    const disp = Number(e.disponivel||0) !== 0
+    return `<tr>
+      <td><b style="color:var(--fg)">${e.nome}</b>${e.obs?`<div style="font-size:11px;color:var(--muted)">${e.obs}</div>`:''}</td>
+      <td><span class="badge b-orange">${e.categoria||'—'}</span></td>
+      <td style="text-align:center"><span class="badge ${alrt?'b-red':'b-green'}">${e.quantidade||0} ${alrt?'⚠':''}</span></td>
+      <td style="text-align:right;font-weight:800;color:var(--primary)">${fmtMoeda(e.preco)}</td>
+      <td style="text-align:center">
+        <button onclick="alternarDisponivel(${e.id},${disp?0:1})"
+          style="background:${disp?'var(--green-bg)':'var(--red-bg)'};color:${disp?'var(--green)':'var(--red)'};border:1px solid ${disp?'rgba(34,211,160,.3)':'rgba(240,82,82,.3)'};border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">
+          ${disp?'📱 Visível':'🚫 Oculto'}
+        </button>
+      </td>
+      <td style="text-align:center">${badgePreparo(e.setor_preparo || '')}</td>
+      <td style="font-size:12px;color:${venc?'var(--red)':'var(--muted)'}">${e.validade?fmtData(e.validade)+(venc?' ⚠':''):'—'}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-edit" onclick="editar(${e.id})">✏️</button>
+        <button class="btn-danger" onclick="excluir(${e.id})">🗑️</button>
+      </td>
+    </tr>`
+  }).join('') : '<tr><td colspan="8" class="empty">Nenhum produto do cardápio cadastrado. Clique em "Novo Produto" e escolha 🍽️ Produto do Cardápio.</td></tr>'
+
+  // ── TABELA INTERNOS ──
+  document.getElementById('tbodyInt').innerHTML = intItens.length ? intItens.map(e => {
+    const alrt = Number(e.quantidade||0) <= Number(e.qtd_minima||0)
+    const venc = e.validade && new Date(e.validade) < new Date()
+    return `<tr>
+      <td><b style="color:var(--fg)">${e.nome}</b>${e.obs?`<div style="font-size:11px;color:var(--muted)">${e.obs}</div>`:''}</td>
+      <td><span class="badge b-yellow">${e.categoria||'—'}</span></td>
+      <td style="text-align:center"><span class="badge ${alrt?'b-red':'b-blue'}">${e.quantidade||0} ${alrt?'⚠':''}</span></td>
+      <td style="text-align:center;font-size:12px;color:var(--muted)">${e.qtd_minima||0}</td>
+      <td style="font-size:12px;color:var(--muted)">${e.fornecedor||'—'}</td>
+      <td style="font-size:12px;color:${venc?'var(--red)':'var(--muted)'}">${e.validade?fmtData(e.validade)+(venc?' ⚠':''):'—'}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-edit" onclick="editar(${e.id})">✏️</button>
+        <button class="btn-danger" onclick="excluir(${e.id})">🗑️</button>
+      </td>
+    </tr>`
+  }).join('') : '<tr><td colspan="7" class="empty">Nenhum produto interno cadastrado. Clique em "Novo Produto" e escolha 🔒 Produto Interno.</td></tr>'
+}
+
+setTipo('cardapio')
+render()
+</script>
+</body></html>

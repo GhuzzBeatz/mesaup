@@ -1,0 +1,442 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="../css/style.css">
+  <script src="../js/util.js"></script>
+</head>
+<body>
+<div class="page-wrap">
+  <div class="page-header">
+    <div>
+      <div class="page-title">📱 Cardápio QR Code</div>
+      <div class="page-sub">Publique o cardápio online, imprima o QR e exporte PDF para WhatsApp.</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <button class="btn btn-primary" onclick="abrirQRCode()" style="background:linear-gradient(135deg,#f97316,#fbbf24);font-size:14px;padding:10px 16px">📱 Ver QR do Cardápio</button>
+      <button class="btn btn-primary" onclick="publicarCardapioNuvem()">🌐 Publicar / Atualizar</button>
+      <button class="btn btn-ghost" onclick="exportarPDFCardapio()">📄 Exportar PDF</button>
+    </div>
+  </div>
+
+  <div class="sec-card" style="margin-bottom:16px">
+    <div class="sec-head">
+      🌐 QR online fixo do estabelecimento
+      <span style="font-size:11px;color:var(--muted)" id="cloudStatusTxt">Carregando...</span>
+    </div>
+    <div style="display:grid;grid-template-columns:220px minmax(0,1fr);gap:20px;padding:18px;align-items:start">
+      <div style="text-align:center">
+        <div id="qrCloudInline" style="width:210px;height:210px;background:#fff;border-radius:14px;display:flex;align-items:center;justify-content:center;padding:10px;box-shadow:0 4px 20px rgba(0,0,0,0.28)">
+          <div style="color:#999;font-size:13px">Gerando QR...</div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:9px;word-break:break-all" id="cloudUrlTxt">-</div>
+      </div>
+      <div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px">
+          <div style="background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:12px">
+            <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Código</div>
+            <div id="cloudCodigoTxt" style="font-size:13px;font-weight:900;color:var(--fg);word-break:break-all">-</div>
+          </div>
+          <div style="background:var(--green-bg);border:1px solid rgba(34,211,160,.22);border-radius:12px;padding:12px">
+            <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Internet</div>
+            <div style="font-size:13px;font-weight:900;color:var(--green)">Qualquer rede</div>
+          </div>
+          <div style="background:var(--blue-bg);border:1px solid rgba(79,142,247,.22);border-radius:12px;padding:12px">
+            <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px">Link</div>
+            <div style="font-size:13px;font-weight:900;color:var(--blue)">Fixo</div>
+          </div>
+        </div>
+
+        <div style="font-size:13px;color:var(--fg2);line-height:1.75;margin-bottom:14px">
+          O QR acima é o endereço online do cardápio. O cliente pode escanear usando o próprio 4G/5G ou qualquer Wi-Fi, sem precisar estar na mesma internet do computador.
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="publicarCardapioNuvem()">🌐 Publicar alterações</button>
+          <button class="btn btn-ghost" onclick="copiarLinkCardapio()">🔗 Copiar link</button>
+          <button class="btn btn-ghost" onclick="abrirLinkCardapio()">↗ Abrir link</button>
+          <button class="btn btn-ghost" onclick="imprimirQRInline()">🖨️ Imprimir QR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-card" style="margin-bottom:16px">
+    <div class="sec-head">
+      👁️ Prévia — O que o cliente vai ver
+      <span style="font-size:11px;color:var(--muted)" id="lblContagem"></span>
+    </div>
+    <div id="previaCardapio" style="padding:16px"></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;line-height:1.65;color:var(--fg2);font-size:13px">
+      <b style="color:var(--fg)">1. Monte o cardápio</b><br>
+      Vá em <b>📦 Estoque & Cardápio</b>, cadastre os produtos, informe preço e marque como <b>📱 Disponível</b>.
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;line-height:1.65;color:var(--fg2);font-size:13px">
+      <b style="color:var(--fg)">2. Publique online</b><br>
+      Clique em <b>Publicar / Atualizar</b> sempre que mudar preço, nome ou disponibilidade dos produtos.
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;line-height:1.65;color:var(--fg2);font-size:13px">
+      <b style="color:var(--fg)">3. Use o QR fixo</b><br>
+      Imprima o QR, cole nas mesas ou envie o link. O endereço não muda para o cliente.
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;line-height:1.65;color:var(--fg2);font-size:13px">
+      <b style="color:var(--fg)">4. Envie PDF</b><br>
+      Use <b>Exportar PDF</b> para mandar o cardápio no WhatsApp quando quiser uma versão offline.
+    </div>
+  </div>
+
+  <div style="background:var(--green-bg);border:1px solid rgba(34,211,160,.25);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--fg2);line-height:1.7">
+    ✅ <b>Resumo simples:</b> cadastre os produtos, clique em publicar e entregue o QR. O cliente escaneia e vê o cardápio no celular usando a própria internet.
+  </div>
+</div>
+
+<div class="modal-ov" id="modalQR" style="display:none" onclick="if(event.target===this)fecharQR()">
+  <div class="modal-box wide">
+    <div class="modal-title">📱 QR Code do Cardápio Digital</div>
+    <div id="qrStatus" style="margin-bottom:16px;padding:12px;border-radius:10px;font-size:13px;font-weight:600;background:var(--primary-bg);border:1px solid var(--primary-bdr);color:var(--primary)">
+      QR fixo pronto para usar.
+    </div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start">
+      <div style="text-align:center">
+        <div id="qrcode" style="width:220px;height:220px;background:#fff;border-radius:12px;display:flex;align-items:center;justify-content:center;padding:10px;box-shadow:0 4px 20px rgba(0,0,0,0.3)">
+          <div style="color:#999;font-size:13px">Gerando...</div>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;word-break:break-all;max-width:220px" id="qrUrl">-</div>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:800;color:var(--fg);margin-bottom:12px">Como entregar para o cliente</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">1</div>
+            <div style="font-size:13px;color:var(--fg2);line-height:1.5">Clique em <b>Publicar / Atualizar</b> quando cadastrar produto novo, mudar preço ou tirar item do cardápio.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">2</div>
+            <div style="font-size:13px;color:var(--fg2);line-height:1.5">Imprima este QR Code e cole nas mesas, no balcão ou no caixa.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">3</div>
+            <div style="font-size:13px;color:var(--fg2);line-height:1.5">O cliente aponta a câmera do celular e abre o cardápio usando a própria internet.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start">
+            <div style="width:24px;height:24px;border-radius:50%;background:var(--green);color:#111;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">✓</div>
+            <div style="font-size:13px;color:var(--fg2);line-height:1.5">Se quiser mandar pelo WhatsApp, use <b>Exportar PDF</b> e envie o arquivo para o cliente.</div>
+          </div>
+        </div>
+        <div style="margin-top:16px;padding:12px;background:var(--blue-bg);border:1px solid rgba(79,142,247,.3);border-radius:8px;font-size:12px;color:var(--fg2);line-height:1.6">
+          🌐 Este QR é fixo. Você pode imprimir uma vez e apenas atualizar o cardápio pelo botão de publicação quando mudar algum item.
+        </div>
+      </div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="fecharQR()">Fechar</button>
+      <button class="btn btn-ghost" onclick="exportarPDFCardapio()">📄 Exportar PDF</button>
+      <button class="btn btn-ghost" onclick="imprimirQR()">🖨️ Imprimir QR</button>
+      <button class="btn btn-primary" onclick="publicarCardapioNuvem()">🌐 Publicar / Atualizar</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+aplicarTemaAtual()
+const { listarCardapio, getConfig, setConfig } = require('../js/db.js')
+const { ensureCloudIdentity, getPublicCardapioUrl, publicarCardapioCloud, isCloudConfigured } = require('../js/cloud.js')
+const { ipcRenderer, shell } = require('electron')
+
+function escHtml(v) {
+  return String(v || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))
+}
+
+function getEmoji(cat) {
+  const m = {'Bebidas':'🥤','Cervejas':'🍺','Drinks':'🍹','Porções':'🍟','Lanches':'🍔','Pratos':'🍽️','Sobremesas':'🍰','Não Alcoólicos':'🧃'}
+  return m[cat] || '🍴'
+}
+
+function getProdutosDisponiveis() {
+  return listarCardapio().filter(p => Number(p.disponivel || 0) !== 0)
+}
+
+function getCloudInfo() {
+  const identidade = ensureCloudIdentity(getConfig('bar_nome') || 'mesaup')
+  return {
+    codigo: identidade.codigo,
+    url: getPublicCardapioUrl(identidade.codigo)
+  }
+}
+
+function formatDataHora(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' })
+}
+
+function renderQRCodeInto(target, url, size = 200) {
+  const el = typeof target === 'string' ? document.getElementById(target) : target
+  if (!el) return
+  el.innerHTML = ''
+  if (typeof QRCode !== 'undefined') {
+    new QRCode(el, { text:url, width:size, height:size, colorDark:'#000', colorLight:'#fff', correctLevel:QRCode.CorrectLevel.H })
+  } else {
+    el.innerHTML = `<div style="padding:16px;text-align:center;word-break:break-all"><div style="font-size:11px;color:#999;margin-bottom:6px">Link do cardápio:</div><div style="font-size:13px;font-weight:700;color:#f97316">${escHtml(url)}</div></div>`
+  }
+}
+
+function renderCloudPanel() {
+  const info = getCloudInfo()
+  const ultima = formatDataHora(getConfig('cloud_ultima_publicacao'))
+  document.getElementById('cloudCodigoTxt').textContent = info.codigo
+  document.getElementById('cloudUrlTxt').textContent = info.url
+  document.getElementById('cloudStatusTxt').textContent = ultima ? `Atualizado em ${ultima}` : 'Ainda não publicado'
+  renderQRCodeInto('qrCloudInline', info.url, 190)
+}
+
+function renderPrevia() {
+  const produtos = getProdutosDisponiveis()
+  const categorias = [...new Set(produtos.map(p => p.categoria || 'Outros'))]
+  const el = document.getElementById('previaCardapio')
+  const lblEl = document.getElementById('lblContagem')
+  lblEl.textContent = `${produtos.length} produto(s) disponíveis`
+
+  if (!produtos.length) {
+    el.innerHTML = `<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">
+      Nenhum produto disponível no cardápio.<br>
+      <span style="font-size:12px">Vá em <b>Estoque & Cardápio</b>, adicione produtos com preço e marque como 📱 Disponível.</span>
+    </div>`
+    return
+  }
+
+  el.innerHTML = categorias.map(cat => {
+    const itens = produtos.filter(p => (p.categoria || 'Outros') === cat)
+    return `<div style="margin-bottom:20px">
+      <div style="font-size:10px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.12em;padding:6px 0 8px;border-bottom:1px solid var(--border);margin-bottom:10px">${escHtml(cat)}</div>
+      ${itens.map(p => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:10px;margin-bottom:6px">
+          <span style="font-size:20px">${getEmoji(p.categoria)}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:700;color:var(--fg)">${escHtml(p.nome)}</div>
+            ${p.obs ? `<div style="font-size:11px;color:var(--muted)">${escHtml(p.obs)}</div>` : ''}
+          </div>
+          <div style="font-size:15px;font-weight:900;color:var(--primary)">${fmtMoeda(p.preco)}</div>
+        </div>`).join('')}
+    </div>`
+  }).join('')
+}
+
+function gerarHTMLCardapio() {
+  const produtos = getProdutosDisponiveis()
+  const nomeBar = getConfig('bar_nome') || 'Nosso Cardápio'
+  const categorias = [...new Set(produtos.map(p => p.categoria || 'Outros'))]
+  const secoes = categorias.map(cat => {
+    const itens = produtos.filter(p => (p.categoria || 'Outros') === cat)
+    return `<div class="cat"><div class="cat-t">${escHtml(cat)}</div>${itens.map(p => `
+      <div class="item">
+        <div class="ico">${getEmoji(p.categoria)}</div>
+        <div class="inf"><div class="nm">${escHtml(p.nome)}</div>${p.obs ? `<div class="ob">${escHtml(p.obs)}</div>` : ''}</div>
+        <div class="pr">R$ ${Number(p.preco || 0).toLocaleString('pt-BR', { minimumFractionDigits:2 })}</div>
+      </div>`).join('')}</div>`
+  }).join('')
+
+  return `<!DOCTYPE html><html lang="pt-BR"><head>
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>${escHtml(nomeBar)}</title>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}
+      body{font-family:-apple-system,'Segoe UI',Arial,sans-serif;background:#0f1117;color:#fff;min-height:100vh}
+      .header{background:linear-gradient(135deg,#1a1a0e,#2a1a00);padding:28px 20px 20px;text-align:center;border-bottom:2px solid rgba(249,115,22,.3)}
+      .hl{font-size:32px;margin-bottom:6px}.hn{font-size:22px;font-weight:900}.hs{font-size:12px;color:rgba(255,255,255,.5);margin-top:4px}
+      .body{padding:20px 16px 40px;max-width:600px;margin:0 auto}.cat{margin-bottom:24px}
+      .cat-t{font-size:11px;font-weight:800;color:#f97316;text-transform:uppercase;letter-spacing:.15em;padding:6px 0 10px;border-bottom:1px solid rgba(249,115,22,.2);margin-bottom:10px}
+      .item{background:#1c2233;border:1px solid #2a3350;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px}
+      .ico{font-size:22px;width:32px;text-align:center;flex-shrink:0}.inf{flex:1}.nm{font-size:15px;font-weight:700;color:#e8eaf0}.ob{font-size:12px;color:#8b94ad;margin-top:2px}.pr{font-size:16px;font-weight:900;color:#f97316;white-space:nowrap}
+      .ft{text-align:center;padding:20px;font-size:11px;color:#5a6480}
+    </style></head><body>
+    <div class="header"><div class="hl">🍽️</div><div class="hn">${escHtml(nomeBar)}</div><div class="hs">Cardápio Digital</div></div>
+    <div class="body">${secoes || '<p style="text-align:center;color:#5a6480;padding:40px">Nenhum produto disponível.</p>'}</div>
+    <div class="ft">MesaUp • GHZ Plugin</div></body></html>`
+}
+
+function gerarHTMLCardapioPDF() {
+  const produtos = getProdutosDisponiveis()
+  const nomeBar = getConfig('bar_nome') || 'Nosso Cardápio'
+  const telefone = getConfig('bar_telefone') || ''
+  const endereco = getConfig('bar_endereco') || ''
+  const info = getCloudInfo()
+  const categorias = [...new Set(produtos.map(p => p.categoria || 'Outros'))]
+  const secoes = categorias.map(cat => {
+    const itens = produtos.filter(p => (p.categoria || 'Outros') === cat)
+    return `<section class="cat"><h2>${escHtml(cat)}</h2>${itens.map(p => `
+      <div class="item">
+        <div><strong>${escHtml(p.nome)}</strong>${p.obs ? `<small>${escHtml(p.obs)}</small>` : ''}</div>
+        <b>${fmtMoeda(p.preco)}</b>
+      </div>`).join('')}</section>`
+  }).join('')
+
+  return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${escHtml(nomeBar)} - Cardápio</title>
+    <style>
+      @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#1f2933;background:#fff;margin:0}.top{border:2px solid #f97316;border-radius:18px;padding:22px 24px;margin-bottom:18px;background:#fff7ed}.brand{font-size:28px;font-weight:900;color:#111827;letter-spacing:-.03em}.sub{margin-top:6px;color:#5f6b7a;font-size:12px;line-height:1.5}.tag{display:inline-block;background:#f97316;color:#fff;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}.cat{break-inside:avoid;margin-bottom:18px}h2{font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:#f97316;border-bottom:1px solid #ffd2a8;padding-bottom:8px;margin:0 0 8px}.item{display:flex;justify-content:space-between;gap:18px;border-bottom:1px solid #eef0f4;padding:10px 0}.item strong{display:block;font-size:14px;color:#111827}.item small{display:block;font-size:11px;color:#667085;margin-top:2px;line-height:1.4}.item b{font-size:14px;color:#f97316;white-space:nowrap}.foot{margin-top:20px;border-top:1px solid #e5e7eb;padding-top:12px;font-size:10px;color:#667085;line-height:1.5}.link{word-break:break-all;color:#f97316;font-weight:700}.empty{text-align:center;color:#667085;padding:40px 0}
+    </style></head><body>
+      <div class="top"><div class="tag">Cardápio Digital</div><div class="brand">${escHtml(nomeBar)}</div><div class="sub">${telefone ? `WhatsApp: ${escHtml(telefone)}<br>` : ''}${endereco ? `${escHtml(endereco)}<br>` : ''}Cardápio gerado pelo MesaUp.</div></div>
+      ${secoes || '<div class="empty">Nenhum produto disponível no cardápio.</div>'}
+      <div class="foot">Acesse também pelo QR Code ou link fixo: <span class="link">${escHtml(info.url)}</span><br>MesaUp • GHZ Plugin • ghzplugin.com.br • 11948981459</div>
+    </body></html>`
+}
+
+function getEstabelecimentoPayload() {
+  return {
+    nome: getConfig('bar_nome') || 'Nosso Cardápio',
+    telefone: getConfig('bar_telefone') || '',
+    endereco: getConfig('bar_endereco') || '',
+    documento: getConfig('bar_cnpj') || '',
+    responsavel: getConfig('bar_responsavel') || ''
+  }
+}
+
+function renderQRCodeUrl(url) {
+  document.getElementById('qrUrl').textContent = url
+  renderQRCodeInto('qrcode', url, 200)
+}
+
+function abrirQRCode() {
+  const info = getCloudInfo()
+  const produtos = getProdutosDisponiveis()
+  document.getElementById('modalQR').style.display = 'flex'
+  const s = document.getElementById('qrStatus')
+  s.style.background = produtos.length ? 'var(--green-bg)' : 'var(--yellow-bg)'
+  s.style.color = produtos.length ? 'var(--green)' : 'var(--yellow)'
+  s.textContent = produtos.length
+    ? '✅ QR online fixo. Publique/atualize antes de entregar ao cliente.'
+    : '⚠️ O QR já existe, mas ainda não há produtos disponíveis para publicar.'
+  renderQRCodeUrl(info.url)
+}
+
+async function publicarCardapioNuvem() {
+  const produtos = getProdutosDisponiveis()
+  if (!produtos.length) return avisoModal('Nenhum produto disponível no cardápio. Vá em Estoque & Cardápio e marque produtos como 📱 Disponível.')
+
+  const info = getCloudInfo()
+  document.getElementById('modalQR').style.display = 'flex'
+  const s = document.getElementById('qrStatus')
+  document.getElementById('qrcode').innerHTML = '<div style="color:#999;font-size:13px;text-align:center">Publicando...</div>'
+  s.style.background = 'var(--primary-bg)'
+  s.style.color = 'var(--primary)'
+  s.textContent = '⏳ Publicando o cardápio online...'
+  renderQRCodeUrl(info.url)
+
+  if (!isCloudConfigured()) {
+    s.style.background = 'var(--yellow-bg)'
+    s.style.color = 'var(--yellow)'
+    s.textContent = '⚠️ Publicação online indisponível nesta instalação. Fale com o suporte GHZ Plugin.'
+    return
+  }
+
+  const r = await publicarCardapioCloud({
+    htmlContent: gerarHTMLCardapio(),
+    estabelecimento: getEstabelecimentoPayload()
+  })
+
+  if (!r.sucesso) {
+    s.style.background = 'var(--red-bg)'
+    s.style.color = 'var(--red)'
+    s.textContent = '❌ Erro ao publicar: ' + (r.mensagem || r.motivo || 'tente novamente.')
+    return
+  }
+
+  setConfig('cloud_ultima_publicacao', new Date().toISOString())
+  s.style.background = 'var(--green-bg)'
+  s.style.color = 'var(--green)'
+  s.textContent = '✅ Cardápio publicado e QR atualizado com sucesso.'
+  renderQRCodeUrl(r.publicUrl || info.url)
+  renderCloudPanel()
+}
+
+function nomeArquivoSeguro(v) {
+  return String(v || 'Cardapio')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9_-]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 48) || 'Cardapio'
+}
+
+function exportarPDFCardapio() {
+  const produtos = getProdutosDisponiveis()
+  if (!produtos.length) return avisoModal('Nenhum produto disponível para exportar. Cadastre produtos e marque como 📱 Disponível.')
+  const nome = nomeArquivoSeguro(getConfig('bar_nome') || 'MesaUp_Cardapio')
+  ipcRenderer.invoke('salvar-pdf', {
+    htmlContent: gerarHTMLCardapioPDF(),
+    nomeArquivo: `${nome}_Cardapio.pdf`
+  }).then(r => {
+    if (r && r.sucesso) avisoModal('PDF do cardápio gerado com sucesso. Agora ele pode ser enviado pelo WhatsApp como arquivo.')
+    else if (!r || r.motivo !== 'cancelado') avisoModal('Erro ao exportar o PDF do cardápio.')
+  }).catch(e => avisoModal('Erro ao exportar PDF: ' + e.message))
+}
+
+function copiarLinkCardapio() {
+  const url = getCloudInfo().url
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => avisoModal('Link do cardápio copiado.'))
+      .catch(() => copiarLinkFallback(url))
+  } else {
+    copiarLinkFallback(url)
+  }
+}
+
+function copiarLinkFallback(url) {
+  const input = document.createElement('input')
+  input.value = url
+  document.body.appendChild(input)
+  input.select()
+  document.execCommand('copy')
+  input.remove()
+  avisoModal('Link do cardápio copiado.')
+}
+
+function abrirLinkCardapio() {
+  shell.openExternal(getCloudInfo().url)
+}
+
+function fecharQR() {
+  document.getElementById('modalQR').style.display = 'none'
+  ipcRenderer.invoke('parar-servidor-cardapio').catch(() => {})
+}
+
+function getQrImageData(containerId) {
+  const el = document.getElementById(containerId)
+  if (!el) return ''
+  const img = el.querySelector('img')
+  if (img && img.src) return img.src
+  const canvas = el.querySelector('canvas')
+  if (canvas) return canvas.toDataURL('image/png')
+  return ''
+}
+
+function imprimirQRInline() {
+  abrirQRCode()
+  setTimeout(() => imprimirQR(), 120)
+}
+
+function imprimirQR() {
+  const url = document.getElementById('qrUrl').textContent || getCloudInfo().url
+  const nome = getConfig('bar_nome') || 'Cardápio'
+  const imgSrc = getQrImageData('qrcode')
+  const w = window.open('', '_blank')
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <style>body{font-family:Arial,sans-serif;text-align:center;padding:40px;color:#111}h2{font-size:22px;margin-bottom:6px}p{font-size:13px;color:#666;margin-bottom:20px;line-height:1.5}
+    img{width:230px;height:230px;border:2px solid #eee;border-radius:10px;padding:8px}.url{font-size:11px;color:#777;margin-top:10px;word-break:break-all}.ft{font-size:10px;color:#aaa;margin-top:20px}@media print{button{display:none}}</style></head><body>
+    <h2>📱 Cardápio Digital</h2><p>${escHtml(nome)}<br><small>Escaneie para ver o cardápio online</small></p>
+    ${imgSrc ? `<img src="${imgSrc}">` : `<div style="font-size:14px;font-weight:700;color:#f97316;padding:20px;border:2px solid #f97316;border-radius:10px;display:inline-block;word-break:break-all">${escHtml(url)}</div>`}
+    <div class="url">${escHtml(url)}</div><div class="ft">MesaUp • GHZ Plugin • ghzplugin.com.br</div></body></html>`)
+  w.document.close()
+  setTimeout(() => w.print(), 600)
+}
+
+renderCloudPanel()
+renderPrevia()
+</script>
+</body>
+</html>
