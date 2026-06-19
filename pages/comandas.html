@@ -312,6 +312,12 @@ function imprimirHTML(html) {
   w.document.close()
   setTimeout(() => {
     try {
+      const doc = w.document
+      const alturaPx = Math.max(doc.body.scrollHeight, doc.documentElement.scrollHeight)
+      const alturaMm = Math.max(50, Math.ceil((alturaPx * 25.4) / 96) + 2)
+      const paginaTermica = doc.createElement('style')
+      paginaTermica.textContent = `@page{size:80mm ${alturaMm}mm;margin:0!important}html,body{width:80mm!important;margin:0!important;padding:0!important}`
+      doc.head.appendChild(paginaTermica)
       w.focus()
       w.print()
       setTimeout(() => { if (!w.closed) fecharJanela() }, 60000)
@@ -359,18 +365,18 @@ function gerarHTMLContaMesa(c) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>Conta Mesa ${esc(c.mesa_num || '')}</title>
     <style>
-      @page{size:80mm auto;margin:4mm}
-      *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0;background:#fff;font-size:14px}
-      .wrap{width:72mm;margin:0 auto}.center{text-align:center}
+      @page{margin:0}
+      *{box-sizing:border-box}html,body{width:80mm;margin:0;padding:0}body{font-family:Arial,sans-serif;color:#000;background:#fff;font-size:14px}
+      .wrap{width:80mm;margin:0;padding:0 2.5mm .5mm}.center{text-align:center}
       .empresa{font-size:17px;font-weight:900;line-height:1.15;text-transform:uppercase}
-      .mesa-top{font-size:34px;font-weight:900;line-height:1.05;margin-top:5px;letter-spacing:.02em}
+      .mesa-top{font-size:34px;font-weight:900;line-height:1.05;margin-top:3px;letter-spacing:.02em}
       .title{font-size:17px;font-weight:900;letter-spacing:.05em;margin-top:2px}
-      .muted{color:#555;font-size:12px;line-height:1.35}.line{border-top:1px dashed #999;margin:10px 0}
-      .meta{font-size:13px;line-height:1.55}.meta b{display:inline-block;min-width:65px}
-      table{width:100%;border-collapse:collapse}td{padding:7px 0;border-bottom:1px dotted #ddd;vertical-align:top}
+      .muted{color:#000;font-size:12px;font-weight:700;line-height:1.3}.line{border-top:2px solid #000;margin:6px 0}
+      .meta{font-size:13px;font-weight:700;line-height:1.45}.meta b{display:inline-block;min-width:65px;font-weight:900}
+      table{width:100%;border-collapse:collapse}td{padding:6px 0;border-bottom:2px solid #000;vertical-align:top}
       .item b{font-size:15px;line-height:1.25}.valor{text-align:right;white-space:nowrap;font-size:14px;font-weight:800}
-      small{display:block;color:#555;font-size:11px;margin-top:2px}.total{display:flex;justify-content:space-between;font-size:22px;font-weight:900;margin-top:10px}
-      .split{display:flex;justify-content:space-between;font-size:13px;margin-top:6px;color:#333;gap:8px}.foot{font-size:12px;color:#333;text-align:center;line-height:1.4;margin-top:12px;font-weight:700}
+      small{display:block;color:#000;font-size:12px;font-weight:700;margin-top:2px}.total{display:flex;justify-content:space-between;font-size:22px;font-weight:900;margin-top:7px}
+      .split{display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:5px;color:#000;gap:8px}.foot{font-size:12px;color:#000;text-align:center;line-height:1.3;margin-top:6px;font-weight:800}
       @media print{button{display:none}}
     </style></head><body><div class="wrap">
       <div class="center">
@@ -405,13 +411,13 @@ function gerarHTMLPedidoPreparo(c, item) {
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>Pedido ${tituloSetor(setor)}</title>
     <style>
-      @page{size:80mm auto;margin:4mm}
-      *{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#111;margin:0;background:#fff;font-size:14px}
-      .wrap{width:72mm;margin:0 auto}.center{text-align:center}.mesa-top{font-size:38px;font-weight:900;line-height:1.05;letter-spacing:.02em}
-      .title{font-size:22px;font-weight:900;letter-spacing:.06em;margin-top:4px}.line{border-top:1px dashed #999;margin:10px 0}
-      .meta{font-size:12px;line-height:1.55}.meta b{display:inline-block;min-width:62px}
-      .item{border:2px solid #111;border-radius:8px;padding:12px;margin-top:10px;text-align:center}.qtd{font-size:34px;font-weight:900;line-height:1}.nome{font-size:21px;font-weight:900;margin-top:6px;line-height:1.15}
-      .obs{margin-top:10px;border-top:1px dashed #999;padding-top:8px;font-size:14px;line-height:1.35;text-align:left}.foot{font-size:11px;color:#555;text-align:center;margin-top:12px}
+      @page{margin:0}
+      *{box-sizing:border-box}html,body{width:80mm;margin:0;padding:0}body{font-family:Arial,sans-serif;color:#000;background:#fff;font-size:14px}
+      .wrap{width:80mm;margin:0;padding:0 2.5mm .5mm}.center{text-align:center}.mesa-top{font-size:38px;font-weight:900;line-height:1.05;letter-spacing:.02em}
+      .title{font-size:22px;font-weight:900;letter-spacing:.06em;margin-top:3px}.line{border-top:2px solid #000;margin:6px 0}
+      .meta{font-size:13px;font-weight:700;line-height:1.45}.meta b{display:inline-block;min-width:62px;font-weight:900}
+      .item{border:3px solid #000;border-radius:7px;padding:10px;margin-top:7px;text-align:center}.qtd{font-size:34px;font-weight:900;line-height:1}.nome{font-size:21px;font-weight:900;margin-top:5px;line-height:1.15}
+      .obs{margin-top:8px;border-top:2px solid #000;padding-top:7px;font-size:14px;font-weight:800;line-height:1.35;text-align:left}.foot{font-size:12px;color:#000;font-weight:800;text-align:center;margin-top:6px}
       @media print{button{display:none}}
     </style></head><body><div class="wrap">
       <div class="center">

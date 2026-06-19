@@ -1,12 +1,13 @@
 // GHZ License — módulo frontend reutilizável
-window.GHZ_APP_ID = 'mesaup'
+// Configurar GHZ_APP_ID antes de carregar este arquivo
 ;(function () {
-  const APP_ID = window.GHZ_APP_ID
+  const APP_ID = window.GHZ_APP_ID || 'app'
   const LS_KEY = `@${APP_ID.toUpperCase()}:licenca_cache`
   const SESSION_KEY = `@${APP_ID.toUpperCase()}:licenca_sessao`
   const CACHE_MAX_MS = 48 * 60 * 60 * 1000
 
   function normalize(k) { return String(k || '').trim().toUpperCase() }
+
   function getCache() { try { return JSON.parse(localStorage.getItem(LS_KEY) || 'null') } catch (e) { return null } }
 
   function saveCache(d) {
@@ -16,6 +17,7 @@ window.GHZ_APP_ID = 'mesaup'
   }
 
   function clearCache() { localStorage.removeItem(LS_KEY); sessionStorage.removeItem(SESSION_KEY) }
+
   function markSession() { sessionStorage.setItem(SESSION_KEY, JSON.stringify({ ok: true, at: new Date().toISOString() })) }
 
   function sessionValid() {
@@ -27,6 +29,12 @@ window.GHZ_APP_ID = 'mesaup'
     if (!c?.active || !c.license_key) return false
     const t = Date.parse(c.last_validated_at || c.activated_at || '')
     return Number.isFinite(t) && Date.now() - t <= CACHE_MAX_MS
+  }
+
+  function syncFromMain(state) {
+    if (state?.active && state.license_key) return saveCache({ active: true, license_key: state.license_key, customer_name: state.customer_name, activated_at: state.activated_at, last_validated_at: state.last_validated_at })
+    clearCache()
+    return null
   }
 
   async function activateOnline(key) {
@@ -45,8 +53,5 @@ window.GHZ_APP_ID = 'mesaup'
     return r
   }
 
-  function licencaAtiva() { return cacheActive() }
-
-  window.ghzLicense = { getCache, saveCache, clearCache, markSession, sessionValid, cacheActive, activateOnline, validateOnline, normalize, licencaAtiva }
-  window.licencaAtivaMU = cacheActive
+  window.ghzLicense = { getCache, saveCache, clearCache, markSession, sessionValid, cacheActive, syncFromMain, activateOnline, validateOnline, normalize }
 })()

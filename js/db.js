@@ -38,16 +38,50 @@ function setConfig(chave, valor) {
 // â”€â”€ MESAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function listarMesas() { return lerJSON('mesas') }
 function getMesa(id)   { return lerJSON('mesas').find(m => m.id === id) || null }
+function normalizarNumeroMesa(numero) { return String(numero || '').trim() }
+function numeroMesaDuplicado(lista, numero, ignorarId = null) {
+  const chave = normalizarNumeroMesa(numero).toLowerCase()
+  return lista.some(m => m.id !== ignorarId && normalizarNumeroMesa(m.numero).toLowerCase() === chave)
+}
 function inserirMesa(d) {
   const lista = lerJSON('mesas')
-  lista.push({ id: nextId(lista), numero: d.numero, capacidade: d.capacidade||4, status:'livre', criado_em: agora() })
+  const numero = normalizarNumeroMesa(d.numero)
+  if (!numero) return { ok: false, erro: 'Informe o numero da mesa.' }
+  if (numeroMesaDuplicado(lista, numero)) return { ok: false, erro: `A Mesa ${numero} ja esta cadastrada.` }
+  const nova = { id: nextId(lista), numero, capacidade: d.capacidade||4, status:'livre', criado_em: agora() }
+  lista.push(nova)
   salvarJSON('mesas', lista)
+  return { ok: true, mesa: nova }
 }
 function atualizarMesa(d) {
   const lista = lerJSON('mesas')
   const i = lista.findIndex(m => m.id === d.id)
-  if (i >= 0) lista[i] = { ...lista[i], ...d }
+  if (i < 0) return { ok: false, erro: 'Mesa nao encontrada.' }
+
+  const numeroAnterior = normalizarNumeroMesa(lista[i].numero)
+  const novoNumero = d.numero !== undefined ? normalizarNumeroMesa(d.numero) : numeroAnterior
+  if (!novoNumero) return { ok: false, erro: 'Informe o numero da mesa.' }
+  if (d.numero !== undefined && numeroMesaDuplicado(lista, novoNumero, d.id)) {
+    return { ok: false, erro: `A Mesa ${novoNumero} ja esta cadastrada.` }
+  }
+
+  lista[i] = { ...lista[i], ...d, numero: novoNumero }
   salvarJSON('mesas', lista)
+
+  // Comandas abertas acompanham a mesa atual; as fechadas preservam o historico.
+  if (novoNumero !== numeroAnterior) {
+    const comandas = lerJSON('comandas')
+    let alterouComanda = false
+    comandas.forEach(c => {
+      if (c.status === 'aberta' && Number(c.mesa_id) === Number(d.id)) {
+        c.mesa_num = novoNumero
+        alterouComanda = true
+      }
+    })
+    if (alterouComanda) salvarJSON('comandas', comandas)
+  }
+
+  return { ok: true, mesa: lista[i] }
 }
 function deletarMesa(id) { salvarJSON('mesas', lerJSON('mesas').filter(m => m.id !== id)) }
 

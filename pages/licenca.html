@@ -14,32 +14,90 @@
     <div style="font-size:14px;font-weight:700;color:var(--fg);margin-bottom:6px">Insira sua Chave de Licença</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.6">
       Após a compra, a chave foi enviada via mensagem.<br>
-      Formato: <span style="font-family:monospace;color:var(--primary);font-weight:700">MESAUP-0000-XXXX-0000</span>
+      Formato: <span style="font-family:monospace;color:var(--primary);font-weight:700">MESAUP-XXXX-XXXX-XXXX-XXXX</span>
     </div>
-    <input class="lic-input" id="inputChave" maxlength="26" placeholder="MESAUP-XXXX-XXXX-XXXX" oninput="fmt(this)" onkeydown="if(event.key==='Enter')ativar()">
-    <button class="lic-btn" onclick="ativar()">🔑 Ativar Licença</button>
-    <div style="background:var(--red-bg);border:1px solid rgba(240,82,82,.25);color:var(--red);border-radius:8px;padding:9px 13px;font-size:13px;font-weight:600;margin-top:12px;display:none" id="erro">Chave inválida. Verifique e tente novamente.</div>
-    <div style="text-align:center;margin-top:22px;font-size:11px;color:var(--muted)">Suporte: WhatsApp (11) 94898-1459 · GHZPLUGIN@GMAIL.COM</div>
+    <input class="lic-input" id="inputChave" maxlength="30" placeholder="MESAUP-XXXX-XXXX-XXXX-XXXX" oninput="fmt(this)" onkeydown="if(event.key==='Enter')ativar()">
+    <button class="lic-btn" id="btnAtivar" onclick="ativar()">🔑 Ativar Licença</button>
+    <div style="background:var(--red-bg,#2d1b1b);border:1px solid rgba(240,82,82,.25);color:var(--red,#f87171);border-radius:8px;padding:9px 13px;font-size:13px;font-weight:600;margin-top:12px;display:none" id="erro"></div>
+    <div style="background:#1b2d1b;border:1px solid rgba(74,222,128,.25);color:#4ade80;border-radius:8px;padding:9px 13px;font-size:13px;font-weight:600;margin-top:12px;display:none" id="msgOk"></div>
+    <div id="deviceBox" style="margin-top:16px;padding:8px 12px;background:rgba(255,255,255,.03);border-radius:8px;font-size:11px;color:var(--muted,#6b7280);display:none">
+      <b>Computador:</b> <span id="dName">—</span> · <b>Sistema:</b> <span id="dOs">—</span>
+    </div>
+    <div style="text-align:center;margin-top:22px;font-size:11px;color:var(--muted,#6b7280)">Suporte: WhatsApp (11) 94898-1459 · GHZPLUGIN@GMAIL.COM</div>
   </div>
 </div>
 <script>
-aplicarTemaAtual()
+if (typeof aplicarTemaAtual === 'function') aplicarTemaAtual()
+
 function fmt(inp) {
-  let v=inp.value.toUpperCase().replace(/[^A-Z0-9]/g,''),r=''
-  if(v.length<=6) r=v
-  else if(v.length<=10) r=v.slice(0,6)+'-'+v.slice(6)
-  else if(v.length<=14) r=v.slice(0,6)+'-'+v.slice(6,10)+'-'+v.slice(10)
-  else r=v.slice(0,6)+'-'+v.slice(6,10)+'-'+v.slice(10,14)+'-'+v.slice(14,18)
-  inp.value=r
+  let v = inp.value.toUpperCase().replace(/[^A-Z0-9]/g, ''), r = ''
+  const p = v.match(/^[A-Z]+/)
+  const prefixLen = p ? Math.min(p[0].length, 6) : 0
+  const parts = []
+  let pos = 0
+  if (prefixLen > 0) { parts.push(v.slice(0, prefixLen)); pos = prefixLen }
+  while (pos < v.length) { parts.push(v.slice(pos, pos + 4)); pos += 4 }
+  inp.value = parts.join('-')
 }
-function ativar() {
-  const chave=document.getElementById('inputChave').value.trim()
-  if(validarChaveMU(chave)){salvarLicencaMU(chave);window.location.replace('../index.html')}
-  else{
-    document.getElementById('erro').style.display='block'
-    document.getElementById('inputChave').style.borderColor='var(--red)'
-    setTimeout(()=>{document.getElementById('erro').style.display='none';document.getElementById('inputChave').style.borderColor=''},4000)
+
+async function ativar() {
+  const btn = document.getElementById('btnAtivar')
+  const chave = document.getElementById('inputChave').value.trim().toUpperCase()
+  if (!chave || chave.length < 10) { mostrarErro('Insira uma chave válida.'); return }
+
+  btn.disabled = true
+  btn.textContent = '⏳ Validando...'
+  document.getElementById('erro').style.display = 'none'
+
+  try {
+    const state = await require('electron').ipcRenderer.invoke('license:get-state')
+    let result
+    if (state.active && state.license_key === chave) {
+      result = await ghzLicense.validateOnline()
+    } else {
+      result = await ghzLicense.activateOnline(chave)
+    }
+
+    if (result?.ok) {
+      ghzLicense.markSession()
+      document.getElementById('msgOk').textContent = '✅ Licença ativada com sucesso!'
+      document.getElementById('msgOk').style.display = 'block'
+      setTimeout(() => { window.location.replace('../index.html') }, 800)
+      return
+    } else {
+      mostrarErro(result?.message || 'Chave inválida. Verifique e tente novamente.')
+    }
+  } catch (e) {
+    mostrarErro('Erro de conexão. Verifique sua internet e tente novamente.')
   }
+
+  btn.disabled = false
+  btn.textContent = '🔑 Ativar Licença'
 }
+
+function mostrarErro(txt) {
+  const el = document.getElementById('erro')
+  el.textContent = txt
+  el.style.display = 'block'
+  document.getElementById('inputChave').style.borderColor = 'var(--red,#f87171)'
+  setTimeout(() => { el.style.display = 'none'; document.getElementById('inputChave').style.borderColor = '' }, 5000)
+}
+
+;(async function init() {
+  try {
+    const { ipcRenderer } = require('electron')
+    const [device, state] = await Promise.all([
+      ipcRenderer.invoke('license:device-info'),
+      ipcRenderer.invoke('license:get-state')
+    ])
+    document.getElementById('dName').textContent = device.device_name
+    document.getElementById('dOs').textContent = device.device_os
+    document.getElementById('deviceBox').style.display = ''
+    if (state.license_key) {
+      document.getElementById('inputChave').value = state.license_key
+      if (state.active) document.getElementById('btnAtivar').textContent = '🔓 Entrar'
+    }
+  } catch (e) {}
+})()
 </script>
 </body></html>

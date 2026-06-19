@@ -150,5 +150,12 @@ ipcMain.handle('parar-servidor-cardapio', async () => {
   return { sucesso: true }
 })
 
+// ── GHZ Backend (licença + atualização) ──────────────────
+require('./js/ghz-backend')({
+  app, ipcMain, getDataDir,
+  appId: 'mesaup',
+  manifestUrl: 'https://raw.githubusercontent.com/GhuzzBeatz/mesaup/master/update-manifest.json'
+})
+
 app.whenReady().then(createWindow)
 app.on('window-all-closed', () => { if (servidorCardapio) servidorCardapio.close(); if (process.platform !== 'darwin') app.quit() })

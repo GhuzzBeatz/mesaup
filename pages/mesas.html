@@ -193,11 +193,13 @@ function salvarMesa() {
   if (!num) return avisoModal('Informe o numero da mesa.')
 
   const editId = document.getElementById('mesaEditId').value
+  let resultado
   if (editId) {
-    atualizarMesa({ id: Number(editId), numero: num, capacidade: cap })
+    resultado = atualizarMesa({ id: Number(editId), numero: num, capacidade: cap })
   } else {
-    inserirMesa({ numero: num, capacidade: cap })
+    resultado = inserirMesa({ numero: num, capacidade: cap })
   }
+  if (resultado && resultado.ok === false) return avisoModal(resultado.erro)
 
   document.getElementById('modalMesa').style.display = 'none'
   aviso('ok', `Mesa ${num} salva!`)
