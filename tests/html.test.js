@@ -44,6 +44,18 @@ test('janela usa moldura personalizada e suporte compacto', () => {
   assert.match(main, /window:toggle-maximize/)
 })
 
+test('licenca bloqueia segunda instancia e conteudo antes da validacao', () => {
+  const index = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
+  const main = fs.readFileSync(path.join(root, 'main.js'), 'utf8')
+  const backend = fs.readFileSync(path.join(root, 'js', 'ghz-backend.js'), 'utf8')
+  assert.match(main, /requestSingleInstanceLock/)
+  assert.match(main, /validateForStartup/)
+  assert.match(main, /isSessionAuthorized/)
+  assert.match(main, /loadFile\('pages\/licenca\.html'\)/)
+  assert.doesNotMatch(index, /catch\(\(\)\s*=>\s*ghzLicense\.markSession/)
+  assert.match(backend, /sessionAuthorized = true/)
+})
+
 test('atualizador valida o instalador e release publica hash', () => {
   const backend = fs.readFileSync(path.join(root, 'js', 'ghz-backend.js'), 'utf8')
   const workflow = fs.readFileSync(path.join(root, '.github', 'workflows', 'build-release.yml'), 'utf8')
