@@ -88,7 +88,7 @@ html,body{ height:100%; font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif
 ═══════════════════════════════════════ */
 .container{ display:flex; height:100vh; }
 .conteudo{ flex:1; min-width:0; overflow:hidden; background:var(--bg); display:flex; flex-direction:column; }
-.content-titlebar{ height:var(--titlebar-h); flex-shrink:0; background:var(--bg); border-bottom:1px solid rgba(255,255,255,.04); -webkit-app-region:drag; display:flex; justify-content:flex-end; }
+.content-titlebar{ height:var(--titlebar-h); flex-shrink:0; background:var(--bg); -webkit-app-region:drag; display:flex; justify-content:flex-end; }
 .window-controls{ height:100%; display:flex; -webkit-app-region:no-drag; }
 .window-controls button{ width:46px; height:100%; border:0; border-radius:0; background:transparent; color:var(--fg2); font:14px 'Segoe UI',sans-serif; cursor:pointer; transition:background .15s,color .15s; }
 .window-controls button:hover{ background:rgba(255,255,255,.08); color:var(--fg); }
@@ -114,7 +114,7 @@ iframe{ width:100%; min-height:0; flex:1; border:none; }
 .menu-footer{ padding:8px; border-top:1px solid rgba(255,255,255,0.06); background:var(--sidebar-bg); }
 .btn-tema{ width:100%; padding:8px 11px; border:1px solid rgba(255,255,255,0.1); border-radius:8px; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.6); cursor:pointer; font-size:12px; font-weight:600; display:flex; align-items:center; gap:8px; transition:all .15s; margin-bottom:10px; font-family:inherit; }
 .btn-tema:hover{ background:rgba(255,255,255,0.1); color:#fff; }
-.support-card{ width:100%; min-width:0; padding:9px; border-radius:12px; background:linear-gradient(145deg,#0b1220,#111827); border:1px solid rgba(255,153,0,.25); box-shadow:0 7px 18px rgba(0,0,0,.28); color:#fff; overflow:hidden; }
+.support-card{ width:100%; min-width:0; padding:9px; border-radius:12px; background:linear-gradient(145deg,#0b1220,#111827); border:0; box-shadow:0 7px 18px rgba(0,0,0,.28); color:#fff; overflow:hidden; }
 .support-header{ display:flex; align-items:center; gap:8px; margin-bottom:9px; }
 .support-logo-circle{ width:36px; height:36px; min-width:36px; overflow:hidden; border-radius:50%; border:1px solid rgba(255,153,0,.65); box-shadow:0 0 10px rgba(255,140,0,.28); background:#000; }
 .support-logo-circle img{ width:100%; height:100%; object-fit:cover; display:block; }
