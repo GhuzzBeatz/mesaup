@@ -1,6 +1,6 @@
 {
-  "sha256": "0469dfe026fe39293e8854665426bc4fc2df7c6adc335179d0ec258299266fd8",
-  "download_url": "https://github.com/GhuzzBeatz/mesaup/releases/latest/download/MesaUp.Setup.exe",
-  "notes": "MesaUp v2.0.10 - nova versao disponivel.",
-  "version": "2.0.10"
+  "sha256": "c0f908b45668752ef16e0f4f4cf5ced3f8d1f5ce746a3ce01e7e848d2a326180",
+  "notes": "Gate de licenca no processo principal, instancia unica e suporte GHZ atualizado.",
+  "version": "2.0.11",
+  "download_url": "https://github.com/GhuzzBeatz/mesaup/releases/latest/download/MesaUp.Setup.exe"
 }
