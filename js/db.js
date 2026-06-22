@@ -363,6 +363,78 @@ function cancelarComanda(comanda_id) {
   atualizarMesa({ id: lista[i].mesa_id, status: mesaAindaOcupada ? 'ocupada' : 'livre' })
 }
 
+function editarComandaFechada(id, changes) {
+  const lista = lerJSON('comandas')
+  const i = lista.findIndex(c => c.id === id)
+  if (i < 0) return { ok: false, erro: 'Comanda nao encontrada.' }
+  const c = lista[i]
+  if (c.status !== 'fechada' && c.status !== 'cancelada') return { ok: false, erro: 'Somente comandas fechadas ou canceladas podem ser editadas.' }
+
+  if (changes.itens !== undefined) c.itens = changes.itens
+  if (changes.mesa_num !== undefined) c.mesa_num = changes.mesa_num
+  if (changes.garcom !== undefined) c.garcom = changes.garcom
+  if (changes.garcom_id !== undefined) c.garcom_id = changes.garcom_id
+  if (changes.cliente !== undefined) c.consumidor = changes.cliente
+  if (changes.desconto !== undefined) c.desconto = Number(changes.desconto || 0)
+  if (changes.observacao !== undefined) c.observacao = changes.observacao
+
+  // Recalculate total based on items
+  const subtotal = (c.itens || []).reduce((s, it) => s + Number(it.preco || 0) * Number(it.qtd || 0), 0)
+  c.total = Math.max(0, subtotal - Number(c.desconto || 0))
+  c.editado_em = agora()
+
+  lista[i] = c
+  salvarJSON('comandas', lista)
+
+  // Update related financial record if exists
+  const financeiro = lerJSON('financeiro')
+  const fi = financeiro.findIndex(f => Number(f.comanda_id) === Number(id))
+  if (fi >= 0) {
+    financeiro[fi].valor = c.total
+    financeiro[fi].descricao = `Mesa ${c.mesa_num}${c.consumidor ? ' - ' + c.consumidor : ''} - ${(c.itens || []).length} item(s)`
+    salvarJSON('financeiro', financeiro)
+  }
+
+  return { ok: true, comanda: c }
+}
+
+function excluirComanda(id) {
+  const lista = lerJSON('comandas')
+  const i = lista.findIndex(c => c.id === id)
+  if (i < 0) return { ok: false, erro: 'Comanda nao encontrada.' }
+  const c = lista[i]
+
+  // Remove from comandas
+  lista.splice(i, 1)
+  salvarJSON('comandas', lista)
+
+  // Remove related financial records
+  const financeiro = lerJSON('financeiro')
+  const finAntes = financeiro.length
+  const finDepois = financeiro.filter(f => Number(f.comanda_id) !== Number(id))
+  if (finDepois.length !== finAntes) salvarJSON('financeiro', finDepois)
+
+  // Update client stats
+  if (c.cliente_id && c.status === 'fechada') {
+    const clientes = lerJSON('clientes')
+    const ci = clientes.findIndex(cl => Number(cl.id) === Number(c.cliente_id))
+    if (ci >= 0) {
+      clientes[ci].total_compras = Math.max(0, Number(clientes[ci].total_compras || 0) - 1)
+      clientes[ci].total_gasto = Math.max(0, Number(clientes[ci].total_gasto || 0) - Number(c.total || 0))
+      clientes[ci].atualizado_em = agora()
+      salvarJSON('clientes', clientes)
+    }
+  }
+
+  // Remove related conta_clientes movements (fiado)
+  const contas = lerJSON('contas_clientes')
+  const contasAntes = contas.length
+  const contasDepois = contas.filter(m => Number(m.comanda_id) !== Number(id))
+  if (contasDepois.length !== contasAntes) salvarJSON('contas_clientes', contasDepois)
+
+  return { ok: true }
+}
+
 // â”€â”€ FINANCEIRO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function listarFinanceiro(filtros = {}) {
   let lista = lerJSON('financeiro')
@@ -797,7 +869,7 @@ module.exports = {
   listarMesas, getMesa, inserirMesa, atualizarMesa, deletarMesa,
   listarGarcons, getGarcom, inserirGarcom, atualizarGarcom, deletarGarcom, getRelatorioGarcons,
   listarCardapio, getCardapioItem, inserirCardapio, atualizarCardapio, deletarCardapio,
-  listarComandas, getComanda, inserirComanda, transferirComanda, adicionarItemComanda, removerItemComanda, fecharComanda, cancelarComanda,
+  listarComandas, getComanda, inserirComanda, transferirComanda, adicionarItemComanda, removerItemComanda, fecharComanda, cancelarComanda, editarComandaFechada, excluirComanda,
   listarFinanceiro, inserirFinanceiro, atualizarFinanceiro, deletarFinanceiro,
   listarEstoque, getEstoqueItem, inserirEstoque, atualizarEstoque, deletarEstoque, toggleDisponivel, toggleInterno,
   listarClientes, getCliente, inserirCliente, atualizarCliente, deletarCliente, listarMovimentosCliente, registrarDebitoCliente, registrarPagamentoCliente,

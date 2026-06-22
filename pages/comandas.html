@@ -104,6 +104,30 @@
       <button class="btn btn-red" id="btnCancelarComanda" onclick="cancelarComandaAtual()" style="margin-top:16px">Cancelar Comanda</button>
     </div>
 
+    <div id="editarArea" style="margin-top:16px;padding:14px;background:var(--card2);border:1px solid var(--border);border-radius:10px;display:none">
+      <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Editar Comanda Fechada</div>
+      <div id="editItensLista" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;min-height:60px;max-height:260px;overflow-y:auto;padding:10px;margin-bottom:10px"></div>
+      <div class="form-row">
+        <div class="form-group fg1">
+          <label class="form-label">Desconto (R$)</label>
+          <input type="number" id="editDesconto" value="0" min="0" step="0.01">
+        </div>
+        <div class="form-group fg3">
+          <label class="form-label">Observacao</label>
+          <input id="editObservacao" placeholder="Observacao da comanda...">
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:10px">
+        <button class="btn btn-primary" onclick="salvarEdicaoComanda()">Salvar Alteracoes</button>
+        <button class="btn btn-ghost" onclick="cancelarEdicao()">Cancelar Edicao</button>
+      </div>
+    </div>
+
+    <div id="acoesComandaFechada" style="margin-top:16px;display:none;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="iniciarEdicao()">Editar</button>
+      <button class="btn btn-red" onclick="excluirComandaAtual()">Excluir Comanda</button>
+    </div>
+
     <div class="modal-acts">
       <button class="btn btn-ghost" onclick="fecharModal()">Fechar</button>
     </div>
@@ -112,7 +136,7 @@
 
 <script>
 aplicarTemaAtual()
-const { getConfig, listarMesas, listarComandas, getComanda, transferirComanda, adicionarItemComanda, removerItemComanda, fecharComanda, cancelarComanda, listarCardapio, getEstoqueItem } = require('../js/db.js')
+const { getConfig, listarMesas, listarComandas, getComanda, transferirComanda, adicionarItemComanda, removerItemComanda, fecharComanda, cancelarComanda, editarComandaFechada, excluirComanda, listarCardapio, getEstoqueItem } = require('../js/db.js')
 const { ipcRenderer } = require('electron')
 let comandaAtualId = null
 
@@ -235,6 +259,9 @@ function renderDetalhe() {
     ? '<option value="">Selecione a mesa livre...</option>' + mesasLivres.map(m => `<option value="${m.id}">Mesa ${esc(m.numero)}</option>`).join('')
     : '<option value="">Nenhuma mesa livre disponivel</option>'
   document.getElementById('btnTransferirComanda').disabled = !mesasLivres.length
+  const fechadaOuCancelada = c.status === 'fechada' || c.status === 'cancelada'
+  document.getElementById('acoesComandaFechada').style.display = fechadaOuCancelada ? 'flex' : 'none'
+  document.getElementById('editarArea').style.display = 'none'
   atualizarDivisao()
 }
 
@@ -521,6 +548,76 @@ function cancelarComandaAtual() {
       aviso('ok', 'Comanda cancelada.')
       render()
     }
+  })
+}
+
+let editItens = []
+
+function iniciarEdicao() {
+  const c = getComanda(comandaAtualId)
+  if (!c) return
+  editItens = JSON.parse(JSON.stringify(c.itens || []))
+  document.getElementById('editDesconto').value = Number(c.desconto || 0)
+  document.getElementById('editObservacao').value = c.observacao || ''
+  document.getElementById('editarArea').style.display = ''
+  document.getElementById('acoesComandaFechada').style.display = 'none'
+  renderEditItens()
+}
+
+function renderEditItens() {
+  const el = document.getElementById('editItensLista')
+  if (!editItens.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px;text-align:center">Nenhum item.</div>'
+    return
+  }
+  el.innerHTML = editItens.map((it, idx) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px;border-bottom:1px solid var(--border)">
+      <div style="flex:1;font-size:13px;font-weight:700;color:var(--fg)">${esc(it.nome)}</div>
+      <input type="number" min="1" value="${it.qtd}" style="width:60px" onchange="editItemQtd(${idx}, this.value)">
+      <div style="font-size:12px;color:var(--muted);white-space:nowrap">x ${fmtMoeda(it.preco)}</div>
+      <div style="font-weight:700;color:var(--primary);white-space:nowrap;min-width:70px;text-align:right">${fmtMoeda(it.preco * it.qtd)}</div>
+      <button class="btn-danger" onclick="editRemoverItem(${idx})" title="Remover">X</button>
+    </div>`).join('')
+}
+
+function editItemQtd(idx, val) {
+  const qtd = Math.max(1, Number(val || 1))
+  editItens[idx].qtd = qtd
+  renderEditItens()
+}
+
+function editRemoverItem(idx) {
+  editItens.splice(idx, 1)
+  renderEditItens()
+}
+
+function cancelarEdicao() {
+  document.getElementById('editarArea').style.display = 'none'
+  document.getElementById('acoesComandaFechada').style.display = 'flex'
+}
+
+function salvarEdicaoComanda() {
+  const desconto = Number(document.getElementById('editDesconto').value || 0)
+  const observacao = document.getElementById('editObservacao').value.trim()
+  const resultado = editarComandaFechada(comandaAtualId, {
+    itens: editItens,
+    desconto,
+    observacao
+  })
+  if (!resultado.ok) return avisoModal(resultado.erro || 'Erro ao salvar.')
+  document.getElementById('editarArea').style.display = 'none'
+  aviso('ok', 'Comanda atualizada com sucesso!')
+  renderDetalhe()
+}
+
+function excluirComandaAtual() {
+  confirmar('Tem certeza? Esta acao nao pode ser desfeita. A comanda e seus registros financeiros serao excluidos.', ok => {
+    if (!ok) return
+    const resultado = excluirComanda(comandaAtualId)
+    if (!resultado.ok) return avisoModal(resultado.erro || 'Erro ao excluir.')
+    document.getElementById('modalDetalhe').style.display = 'none'
+    aviso('ok', 'Comanda excluida com sucesso!')
+    render()
   })
 }
 
