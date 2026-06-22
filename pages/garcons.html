@@ -70,7 +70,7 @@
 
 <script>
 aplicarTemaAtual()
-const { listarGarcons, getGarcom, inserirGarcom, atualizarGarcom, deletarGarcom, getRelatorioGarcons } = require('../js/db.js')
+const { lerJSON, salvarJSON, listarGarcons, getGarcom, inserirGarcom, atualizarGarcom, deletarGarcom, getRelatorioGarcons } = require('../js/db.js')
 const { ipcRenderer } = require('electron')
 
 function esc(v) {
@@ -217,23 +217,21 @@ function limparHistorico() {
   if (relatorio.comandas === 0) return aviso('erro', 'Nenhum histórico de garçons no período selecionado.')
   confirmar(`Limpar o histórico de vendas dos garçons de ${fmtData(filtros.inicio)} a ${fmtData(filtros.fim)}?\n\nIsso removerá a associação dos garçons em ${relatorio.comandas} comanda(s) fechada(s) no período. As comandas não serão excluídas.`, ok => {
     if (!ok) return
-    const fs = require('fs')
-    const path = require('path')
-    const arquivo = path.join(__dirname, '..', 'data', 'comandas.json')
-    let comandas = []
-    try { comandas = JSON.parse(fs.readFileSync(arquivo, 'utf8')) } catch(e) { return aviso('erro', 'Erro ao ler comandas.') }
-    let count = 0
-    comandas.forEach(c => {
-      if (c.status === 'fechada' && c.fechamento && String(c.fechamento).slice(0,10) >= filtros.inicio && String(c.fechamento).slice(0,10) <= filtros.fim && (c.garcom_id || c.garcom || c.garcom_codigo)) {
-        c.garcom_id = null
-        c.garcom = ''
-        c.garcom_codigo = ''
-        count++
-      }
-    })
-    if (count > 0) fs.writeFileSync(arquivo, JSON.stringify(comandas, null, 2))
-    aviso('ok', `Histórico limpo! ${count} comanda(s) atualizadas.`)
-    renderRelatorio()
+    try {
+      const comandas = lerJSON('comandas', [])
+      let count = 0
+      comandas.forEach(c => {
+        if (c.status === 'fechada' && c.fechamento && String(c.fechamento).slice(0,10) >= filtros.inicio && String(c.fechamento).slice(0,10) <= filtros.fim && (c.garcom_id || c.garcom || c.garcom_codigo)) {
+          c.garcom_id = null
+          c.garcom = ''
+          c.garcom_codigo = ''
+          count++
+        }
+      })
+      if (count > 0) salvarJSON('comandas', comandas)
+      aviso('ok', `Histórico limpo! ${count} comanda(s) atualizadas.`)
+      renderRelatorio()
+    } catch(e) { aviso('erro', 'Erro: ' + e.message) }
   })
 }
 

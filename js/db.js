@@ -792,6 +792,7 @@ function getDashStats(filtros = {}) {
 function dataHoje() { return agora().slice(0, 10) }
 
 module.exports = {
+  lerJSON, salvarJSON,
   getConfig, setConfig,
   listarMesas, getMesa, inserirMesa, atualizarMesa, deletarMesa,
   listarGarcons, getGarcom, inserirGarcom, atualizarGarcom, deletarGarcom, getRelatorioGarcons,
