@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, session } = require('electron')
 const path = require('path')
 const fs   = require('fs')
 
@@ -48,26 +48,37 @@ function createWindow() {
 
 // ── SALVAR PDF ─────────────────────────────────────────────
 ipcMain.handle('salvar-pdf', async (event, { htmlContent, nomeArquivo }) => {
+  let pdfWin = null
   try {
     const { filePath, canceled } = await dialog.showSaveDialog(win, {
       defaultPath: nomeArquivo,
       filters: [{ name: 'PDF', extensions: ['pdf'] }]
     })
     if (canceled || !filePath) return { sucesso: false, motivo: 'cancelado' }
-    const pdfWin = new BrowserWindow({
+    pdfWin = new BrowserWindow({
       show: false,
+      backgroundColor: '#ffffff',
       webPreferences: { nodeIntegration: false, contextIsolation: true }
     })
     await pdfWin.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(htmlContent))
+    const contentHeightPx = await pdfWin.webContents.executeJavaScript(`
+      Math.ceil((document.querySelector('.wrap') || document.body).getBoundingClientRect().height + 4)
+    `)
     const pdfBuffer = await pdfWin.webContents.printToPDF({
-      pageSize: 'A4', printBackground: true,
+      pageSize: {
+        width: 80 / 25.4,
+        height: Math.max(2, Number(contentHeightPx || 0) / 96 + 0.12)
+      },
+      printBackground: true,
+      preferCSSPageSize: false,
       margins: { marginType: 'custom', top: 0, bottom: 0, left: 0, right: 0 }
     })
-    pdfWin.destroy()
     fs.writeFileSync(filePath, pdfBuffer)
     return { sucesso: true, caminho: filePath }
   } catch(err) {
     return { sucesso: false, motivo: 'erro', mensagem: err.message }
+  } finally {
+    if (pdfWin && !pdfWin.isDestroyed()) pdfWin.destroy()
   }
 })
 
@@ -157,5 +168,9 @@ require('./js/ghz-backend')({
   manifestUrl: 'https://raw.githubusercontent.com/GhuzzBeatz/mesaup/master/update-manifest.json'
 })
 
-app.whenReady().then(createWindow)
+app.whenReady().then(async () => {
+  // Evita que uma atualização continue exibindo páginas da versão anterior.
+  await session.defaultSession.clearCache().catch(() => {})
+  createWindow()
+})
 app.on('window-all-closed', () => { if (servidorCardapio) servidorCardapio.close(); if (process.platform !== 'darwin') app.quit() })

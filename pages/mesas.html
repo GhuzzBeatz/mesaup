@@ -10,9 +10,12 @@
   <div class="page-header">
     <div>
       <div class="page-title">Mesas</div>
-      <div class="page-sub">Clique em uma mesa livre para abrir comanda</div>
+      <div class="page-sub">Monte o salao e clique em uma mesa livre para abrir a comanda</div>
     </div>
-    <button class="btn btn-primary" onclick="abrirModalMesa()">+ Nova Mesa</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost" id="btnOrganizar" onclick="alternarOrganizacao()">Organizar planta</button>
+      <button class="btn btn-primary" onclick="abrirModalMesa()">+ Nova Mesa</button>
+    </div>
   </div>
 
   <div class="sec-card">
@@ -23,9 +26,11 @@
         <span style="color:var(--orange)">Ocupada</span>
       </div>
     </div>
-    <div class="mesas-grid" id="gridMesas">
+    <div class="mesas-planta" id="gridMesas">
       <div class="empty">Carregando mesas...</div>
     </div>
+    <div class="planta-ajuda" id="plantaAjuda">Clique em <strong>Organizar planta</strong> para arrastar as mesas ate as posicoes do seu salao.</div>
+    <div class="planta-personalizacao">Caso queira uma planta id&ecirc;ntica &agrave; do seu restaurante, fazemos a personaliza&ccedil;&atilde;o mediante or&ccedil;amento &agrave; parte.</div>
   </div>
 
   <div class="tbl-wrap">
@@ -38,6 +43,7 @@
         <tr>
           <th>No Mesa</th>
           <th>Capacidade</th>
+          <th>Formato</th>
           <th style="text-align:center">Status</th>
           <th style="text-align:center">Acoes</th>
         </tr>
@@ -64,6 +70,16 @@
         <input id="mesaCap" placeholder="4" type="number" min="1" value="4">
       </div>
     </div>
+    <div class="form-row">
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Formato na planta</label>
+        <select id="mesaFormato">
+          <option value="quadrada">Quadrada</option>
+          <option value="redonda">Redonda</option>
+          <option value="retangular">Retangular</option>
+        </select>
+      </div>
+    </div>
     <div class="modal-acts">
       <button class="btn btn-ghost" onclick="document.getElementById('modalMesa').style.display='none'">Cancelar</button>
       <button class="btn btn-primary" onclick="salvarMesa()">Salvar</button>
@@ -78,15 +94,24 @@
 
     <div class="form-row">
       <div class="form-group" style="flex:1">
-        <label class="form-label">Nome do Cliente (opcional)</label>
-        <input id="comandaCliente" placeholder="Opcional - pode abrir a mesa sem nome">
+        <label class="form-label">Cliente cadastrado (opcional)</label>
+        <select id="comandaClienteId" onchange="selecionouCliente()"><option value="">Sem cliente cadastrado</option></select>
       </div>
     </div>
 
     <div class="form-row">
       <div class="form-group" style="flex:1">
-        <label class="form-label">Garcom / Atendente (opcional)</label>
-        <input id="comandaGarcom" placeholder="Nome do garcom...">
+        <label class="form-label">Nome avulso (opcional)</label>
+        <input id="comandaCliente" placeholder="Use apenas quando o cliente nao estiver cadastrado">
+        <div style="font-size:11px;color:var(--muted);margin-top:5px">Para vender fiado, selecione obrigatoriamente um cliente cadastrado.</div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Garçom / Atendente (opcional)</label>
+        <select id="comandaGarcom"><option value="">Sem garçom</option></select>
+        <div style="font-size:11px;color:var(--muted);margin-top:5px">Cadastre e acompanhe as vendas na área Garçons.</div>
       </div>
     </div>
 
@@ -99,38 +124,155 @@
 
 <script>
 aplicarTemaAtual()
-const { listarMesas, getMesa, inserirMesa, atualizarMesa, deletarMesa, inserirComanda, listarComandas } = require('../js/db.js')
+const { listarMesas, getMesa, inserirMesa, atualizarMesa, deletarMesa, inserirComanda, listarComandas, listarGarcons, listarClientes } = require('../js/db.js')
+let modoOrganizacao = false
+let arraste = null
+
+function esc(v) {
+  return String(v || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))
+}
+
+function carregarGarcons() {
+  const lista = listarGarcons({ ativo: true })
+  document.getElementById('comandaGarcom').innerHTML = '<option value="">Sem garçom</option>' + lista.map(g =>
+    `<option value="${g.id}">${esc(g.codigo)} - ${esc(g.nome)}</option>`
+  ).join('')
+}
+
+function carregarClientes() {
+  const lista = listarClientes()
+  document.getElementById('comandaClienteId').innerHTML = '<option value="">Sem cliente cadastrado</option>' + lista.map(c =>
+    `<option value="${c.id}">${esc(c.nome)}${c.telefone ? ' - ' + esc(c.telefone) : ''}${Number(c.saldo_devedor || 0) > 0 ? ' - saldo ' + fmtMoeda(c.saldo_devedor) : ''}</option>`
+  ).join('')
+}
+
+function selecionouCliente() {
+  const id = Number(document.getElementById('comandaClienteId').value || 0)
+  const cliente = listarClientes().find(c => Number(c.id) === id)
+  const input = document.getElementById('comandaCliente')
+  input.value = cliente ? cliente.nome : ''
+  input.disabled = Boolean(cliente)
+}
+
+function normalizarFormato(formato) {
+  return ['quadrada', 'redonda', 'retangular'].includes(formato) ? formato : 'quadrada'
+}
+
+function dimensoesMesa(formato) {
+  if (formato === 'redonda') return { largura: 122, altura: 122 }
+  if (formato === 'retangular') return { largura: 162, altura: 94 }
+  return { largura: 118, altura: 104 }
+}
+
+function posicaoInicial(indice, total) {
+  const colunas = Math.max(2, Math.min(6, Math.ceil(Math.sqrt(Math.max(total, 1) * 1.7))))
+  const linhas = Math.max(1, Math.ceil(total / colunas))
+  const coluna = indice % colunas
+  const linha = Math.floor(indice / colunas)
+  return {
+    x: colunas === 1 ? 50 : 8 + (coluna / Math.max(colunas - 1, 1)) * 84,
+    y: linhas === 1 ? 42 : 8 + (linha / Math.max(linhas - 1, 1)) * 84
+  }
+}
+
+function estiloPosicao(x, y, formato) {
+  const d = dimensoesMesa(formato)
+  return `left:calc(${x}% - ${(x * d.largura / 100).toFixed(2)}px);top:calc(${y}% - ${(y * d.altura / 100).toFixed(2)}px)`
+}
 
 function render() {
   const lista = listarMesas()
   document.getElementById('count').textContent = lista.length + ' mesa(s)'
 
   const grid = document.getElementById('gridMesas')
-  grid.innerHTML = lista.length ? lista.map(m => {
+  grid.classList.toggle('organizando', modoOrganizacao)
+  grid.innerHTML = lista.length ? lista.map((m, indice) => {
     const comanda = listarComandas({ status: 'aberta', mesa_id: m.id })[0]
-    return `<div class="mesa-card ${m.status}" onclick="clicouMesa(${m.id})">
-      <div class="mesa-num">Mesa ${m.numero}</div>
+    const formato = normalizarFormato(m.formato)
+    const inicial = posicaoInicial(indice, lista.length)
+    const x = m.pos_x !== null && m.pos_x !== undefined && Number.isFinite(Number(m.pos_x)) ? Math.max(0, Math.min(100, Number(m.pos_x))) : inicial.x
+    const y = m.pos_y !== null && m.pos_y !== undefined && Number.isFinite(Number(m.pos_y)) ? Math.max(0, Math.min(100, Number(m.pos_y))) : inicial.y
+    return `<div class="mesa-card planta ${m.status} formato-${formato}" style="${estiloPosicao(x, y, formato)}" data-id="${m.id}" data-formato="${formato}" onclick="clicouMesa(${m.id})" onpointerdown="iniciarArraste(event,${m.id})" onpointermove="moverArraste(event)" onpointerup="finalizarArraste(event)" onpointercancel="finalizarArraste(event)">
+      <div class="mesa-label">MESA</div>
+      <div class="mesa-num">${m.numero}</div>
       <div class="mesa-status">${m.status === 'ocupada' ? 'OCUPADA' : 'LIVRE'}</div>
       ${comanda ? `<div class="mesa-total">${fmtMoeda(comanda.total || 0)}</div>` : ''}
-      <div style="font-size:10px;color:var(--muted);margin-top:4px">${m.capacidade} lugares</div>
+      <div class="mesa-capacidade">${m.capacidade} lugares</div>
     </div>`
   }).join('')
-  : '<div class="empty" style="padding:40px">Nenhuma mesa cadastrada. Clique em + Nova Mesa.</div>'
+  : '<div class="empty" style="padding:80px 20px">Nenhuma mesa cadastrada. Clique em + Nova Mesa.</div>'
 
   document.getElementById('tbody').innerHTML = lista.length ? lista.map(m => `
     <tr>
       <td><b style="color:var(--fg)">Mesa ${m.numero}</b></td>
       <td>${m.capacidade} pessoas</td>
+      <td style="text-transform:capitalize">${normalizarFormato(m.formato)}</td>
       <td style="text-align:center"><span class="badge ${m.status === 'ocupada' ? 'b-orange' : 'b-green'}">${m.status}</span></td>
       <td style="text-align:center;white-space:nowrap">
         <button class="btn-edit" onclick="editarMesa(${m.id})">Editar</button>
         <button class="btn-danger" onclick="excluirMesa(${m.id})">Excluir</button>
       </td>
     </tr>`).join('')
-  : '<tr><td colspan="4" class="empty">Nenhuma mesa cadastrada.</td></tr>'
+  : '<tr><td colspan="5" class="empty">Nenhuma mesa cadastrada.</td></tr>'
+}
+
+function alternarOrganizacao() {
+  modoOrganizacao = !modoOrganizacao
+  const btn = document.getElementById('btnOrganizar')
+  btn.textContent = modoOrganizacao ? 'Concluir organizacao' : 'Organizar planta'
+  btn.classList.toggle('btn-primary', modoOrganizacao)
+  btn.classList.toggle('btn-ghost', !modoOrganizacao)
+  document.getElementById('plantaAjuda').innerHTML = modoOrganizacao
+    ? '<strong>Modo de organizacao ativo:</strong> arraste cada mesa para representar o seu salao. As posicoes sao salvas automaticamente.'
+    : 'Clique em <strong>Organizar planta</strong> para arrastar as mesas ate as posicoes do seu salao.'
+  render()
+}
+
+function iniciarArraste(event, id) {
+  if (!modoOrganizacao || event.button !== 0) return
+  event.preventDefault()
+  const card = event.currentTarget
+  const planta = document.getElementById('gridMesas')
+  const cardRect = card.getBoundingClientRect()
+  arraste = {
+    id,
+    card,
+    planta,
+    pointerId: event.pointerId,
+    offsetX: event.clientX - cardRect.left,
+    offsetY: event.clientY - cardRect.top,
+    x: 0,
+    y: 0,
+    moveu: false
+  }
+  card.setPointerCapture(event.pointerId)
+}
+
+function moverArraste(event) {
+  if (!arraste || event.pointerId !== arraste.pointerId) return
+  const plantaRect = arraste.planta.getBoundingClientRect()
+  const limiteX = Math.max(1, plantaRect.width - arraste.card.offsetWidth)
+  const limiteY = Math.max(1, plantaRect.height - arraste.card.offsetHeight)
+  const left = Math.max(0, Math.min(limiteX, event.clientX - plantaRect.left - arraste.offsetX))
+  const top = Math.max(0, Math.min(limiteY, event.clientY - plantaRect.top - arraste.offsetY))
+  arraste.x = left / limiteX * 100
+  arraste.y = top / limiteY * 100
+  arraste.moveu = true
+  arraste.card.style.left = `${left}px`
+  arraste.card.style.top = `${top}px`
+}
+
+function finalizarArraste(event) {
+  if (!arraste || event.pointerId !== arraste.pointerId) return
+  const atual = arraste
+  arraste = null
+  if (atual.card.hasPointerCapture(event.pointerId)) atual.card.releasePointerCapture(event.pointerId)
+  if (atual.moveu) atualizarMesa({ id: atual.id, pos_x: Number(atual.x.toFixed(2)), pos_y: Number(atual.y.toFixed(2)) })
+  render()
 }
 
 function clicouMesa(id) {
+  if (modoOrganizacao) return
   const m = getMesa(id)
   if (!m) return
 
@@ -144,6 +286,10 @@ function clicouMesa(id) {
     document.getElementById('comandaMesaId').value = id
     document.getElementById('modalComandaTitulo').textContent = `Abrir Comanda - Mesa ${m.numero}`
     document.getElementById('comandaCliente').value = ''
+    document.getElementById('comandaCliente').disabled = false
+    carregarClientes()
+    document.getElementById('comandaClienteId').value = ''
+    carregarGarcons()
     document.getElementById('comandaGarcom').value = ''
     document.getElementById('modalComanda').style.display = 'flex'
   }
@@ -152,19 +298,20 @@ function clicouMesa(id) {
 function abrirComanda() {
   const mesaId = Number(document.getElementById('comandaMesaId').value)
   const consumidor = document.getElementById('comandaCliente').value.trim()
-  const garcom = document.getElementById('comandaGarcom').value.trim()
+  const clienteId = Number(document.getElementById('comandaClienteId').value || 0) || null
+  const garcomId = Number(document.getElementById('comandaGarcom').value || 0) || null
   const m = getMesa(mesaId)
 
   if (!m) return
 
-  inserirComanda({ mesa_id: mesaId, mesa_num: m.numero, consumidor, garcom })
+  const comanda = inserirComanda({ mesa_id: mesaId, mesa_num: m.numero, consumidor, cliente_id: clienteId, garcom_id: garcomId })
   document.getElementById('modalComanda').style.display = 'none'
-  window.parent.document.getElementById('frame').src = `pages/comandas.html?mesa_id=${mesaId}`
+  window.parent.document.getElementById('frame').src = `pages/comandas.html?mesa_id=${comanda.mesa_id}`
   window.parent.document.querySelectorAll('.nav-btn').forEach(b => {
     if (b.textContent.includes('Comandas')) b.classList.add('active')
     else b.classList.remove('active')
   })
-  aviso('ok', `Comanda aberta para Mesa ${m.numero}!`)
+  aviso('ok', Number(comanda.mesa_id) === mesaId ? `Comanda aberta para Mesa ${m.numero}!` : `A comanda existente da Mesa ${comanda.mesa_num} foi reutilizada.`)
   render()
 }
 
@@ -172,6 +319,7 @@ function abrirModalMesa() {
   document.getElementById('mesaEditId').value = ''
   document.getElementById('mesaNum').value = ''
   document.getElementById('mesaCap').value = '4'
+  document.getElementById('mesaFormato').value = 'quadrada'
   document.getElementById('modalMesaTitulo').textContent = 'Nova Mesa'
   document.getElementById('modalMesa').style.display = 'flex'
 }
@@ -183,6 +331,7 @@ function editarMesa(id) {
   document.getElementById('mesaEditId').value = id
   document.getElementById('mesaNum').value = m.numero
   document.getElementById('mesaCap').value = m.capacidade || 4
+  document.getElementById('mesaFormato').value = normalizarFormato(m.formato)
   document.getElementById('modalMesaTitulo').textContent = 'Editar Mesa'
   document.getElementById('modalMesa').style.display = 'flex'
 }
@@ -190,14 +339,15 @@ function editarMesa(id) {
 function salvarMesa() {
   const num = document.getElementById('mesaNum').value.trim()
   const cap = Number(document.getElementById('mesaCap').value || 4)
+  const formato = normalizarFormato(document.getElementById('mesaFormato').value)
   if (!num) return avisoModal('Informe o numero da mesa.')
 
   const editId = document.getElementById('mesaEditId').value
   let resultado
   if (editId) {
-    resultado = atualizarMesa({ id: Number(editId), numero: num, capacidade: cap })
+    resultado = atualizarMesa({ id: Number(editId), numero: num, capacidade: cap, formato })
   } else {
-    resultado = inserirMesa({ numero: num, capacidade: cap })
+    resultado = inserirMesa({ numero: num, capacidade: cap, formato })
   }
   if (resultado && resultado.ok === false) return avisoModal(resultado.erro)
 

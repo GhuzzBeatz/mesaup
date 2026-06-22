@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><link rel="stylesheet" href="../css/style.css"><script src="../js/util.js"></script></head>
+<body>
+<div class="page-wrap">
+  <div class="page-header">
+    <div><div class="page-title">👤 Garçons</div><div class="page-sub">Cadastro da equipe e vendas por atendente</div></div>
+    <button class="btn btn-primary" onclick="novoGarcom()">+ Novo Garçom</button>
+  </div>
+
+  <div style="display:flex;gap:12px;align-items:flex-end;margin-bottom:16px;flex-wrap:wrap">
+    <div class="form-group"><label class="form-label">Data inicial</label><input type="date" id="filtroInicio" onchange="renderRelatorio()"></div>
+    <div class="form-group"><label class="form-label">Data final</label><input type="date" id="filtroFim" onchange="renderRelatorio()"></div>
+    <button class="btn btn-ghost" onclick="periodoHoje()">Hoje</button>
+    <button class="btn btn-ghost" onclick="periodoMes()">Este mês</button>
+    <button class="btn btn-ghost" onclick="exportarCSV()">📊 Exportar relatório</button>
+  </div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card"><div><div class="kpi-label">Garçons Ativos</div><div class="kpi-val" id="kpiAtivos">0</div></div><div class="kpi-icon ki-blue">👥</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Vendas do Período</div><div class="kpi-val sm" id="kpiTotal" style="color:var(--green)">R$ 0,00</div></div><div class="kpi-icon ki-green">💵</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Comandas Fechadas</div><div class="kpi-val" id="kpiComandas">0</div></div><div class="kpi-icon ki-orange">📋</div></div>
+    <div class="kpi-card"><div><div class="kpi-label">Ticket Médio</div><div class="kpi-val sm" id="kpiTicket">R$ 0,00</div></div><div class="kpi-icon ki-blue">📈</div></div>
+  </div>
+
+  <div class="tbl-wrap" style="margin-bottom:22px">
+    <div class="tbl-top"><span class="tbl-title">Vendas por Garçom</span><span class="tbl-count" id="countRelatorio"></span></div>
+    <table>
+      <thead><tr><th>Código</th><th>Garçom</th><th style="text-align:center">Comandas</th><th style="text-align:center">Itens</th><th style="text-align:right">Ticket Médio</th><th style="text-align:right">Total Vendido</th></tr></thead>
+      <tbody id="tbodyRelatorio"></tbody>
+    </table>
+  </div>
+
+  <div class="tbl-wrap">
+    <div class="tbl-top"><span class="tbl-title">Equipe Cadastrada</span><span class="tbl-count" id="countEquipe"></span></div>
+    <table>
+      <thead><tr><th>Código</th><th>Nome</th><th style="text-align:center">Status</th><th>Cadastro</th><th style="text-align:center">Ações</th></tr></thead>
+      <tbody id="tbodyEquipe"></tbody>
+    </table>
+  </div>
+
+  <div class="aviso av-ok" id="avisoOk"></div>
+  <div class="aviso av-erro" id="avisoErro"></div>
+</div>
+
+<div class="modal-ov" id="modalGarcom" style="display:none" onclick="if(event.target===this)fecharModal()">
+  <div class="modal-box">
+    <div class="modal-title" id="modalTitulo">Novo Garçom</div>
+    <input type="hidden" id="garcomId">
+    <div class="form-row">
+      <div class="form-group fg1">
+        <label class="form-label">Código numérico</label>
+        <input id="garcomCodigo" inputmode="numeric" maxlength="6" placeholder="Automático">
+      </div>
+      <div class="form-group fg3">
+        <label class="form-label">Nome *</label>
+        <input id="garcomNome" maxlength="80" placeholder="Nome do garçom" onkeydown="if(event.key==='Enter')salvarGarcom()">
+      </div>
+    </div>
+    <div class="form-row" style="margin-top:10px">
+      <div class="form-group fg1"><label class="form-label">Status</label><select id="garcomAtivo"><option value="1">Ativo</option><option value="0">Inativo</option></select></div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="fecharModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarGarcom()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+aplicarTemaAtual()
+const { listarGarcons, getGarcom, inserirGarcom, atualizarGarcom, deletarGarcom, getRelatorioGarcons } = require('../js/db.js')
+const { ipcRenderer } = require('electron')
+
+function esc(v) {
+  return String(v || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))
+}
+
+function periodoMes() {
+  const hoje = dataHoje()
+  document.getElementById('filtroInicio').value = hoje.slice(0, 8) + '01'
+  document.getElementById('filtroFim').value = hoje
+  renderRelatorio()
+}
+
+function periodoHoje() {
+  const hoje = dataHoje()
+  document.getElementById('filtroInicio').value = hoje
+  document.getElementById('filtroFim').value = hoje
+  renderRelatorio()
+}
+
+function filtrosRelatorio() {
+  return {
+    inicio: document.getElementById('filtroInicio').value || dataHoje(),
+    fim: document.getElementById('filtroFim').value || dataHoje()
+  }
+}
+
+function renderRelatorio() {
+  const relatorio = getRelatorioGarcons(filtrosRelatorio())
+  const linhas = relatorio.garcons.filter(g => g.comandas > 0 || g.ativo)
+  document.getElementById('kpiAtivos').textContent = listarGarcons({ ativo: true }).length
+  document.getElementById('kpiTotal').textContent = fmtMoeda(relatorio.total)
+  document.getElementById('kpiComandas').textContent = relatorio.comandas
+  document.getElementById('kpiTicket').textContent = fmtMoeda(relatorio.ticket_medio)
+  document.getElementById('countRelatorio').textContent = `${fmtData(relatorio.periodo.inicio)} a ${fmtData(relatorio.periodo.fim)}`
+  document.getElementById('tbodyRelatorio').innerHTML = linhas.length ? linhas.map(g => `
+    <tr>
+      <td><span class="badge b-blue">${esc(g.codigo || '--')}</span></td>
+      <td><b style="color:var(--fg)">${esc(g.nome)}</b>${g.ativo === false && g.garcom_id ? ' <span class="badge b-red">inativo</span>' : ''}</td>
+      <td style="text-align:center">${g.comandas}</td>
+      <td style="text-align:center">${g.itens}</td>
+      <td style="text-align:right">${fmtMoeda(g.ticket_medio)}</td>
+      <td style="text-align:right;font-weight:800;color:var(--green)">${fmtMoeda(g.total)}</td>
+    </tr>`).join('') : '<tr><td colspan="6" class="empty">Nenhuma venda por garçom no período.</td></tr>'
+}
+
+function renderEquipe() {
+  const lista = listarGarcons()
+  document.getElementById('countEquipe').textContent = `${lista.length} garçom(ns)`
+  document.getElementById('tbodyEquipe').innerHTML = lista.length ? lista.map(g => `
+    <tr>
+      <td><span class="badge b-blue">${esc(g.codigo)}</span></td>
+      <td><b style="color:var(--fg)">${esc(g.nome)}</b></td>
+      <td style="text-align:center"><span class="badge ${g.ativo !== false ? 'b-green' : 'b-red'}">${g.ativo !== false ? 'ativo' : 'inativo'}</span></td>
+      <td>${g.criado_em ? esc(fmtData(String(g.criado_em).slice(0,10))) : '—'}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn-edit" onclick="editarGarcom(${g.id})">Editar</button>
+        <button class="btn btn-ghost" onclick="alternarStatus(${g.id})">${g.ativo !== false ? 'Inativar' : 'Ativar'}</button>
+        <button class="btn-danger" onclick="excluirGarcom(${g.id})">Excluir</button>
+      </td>
+    </tr>`).join('') : '<tr><td colspan="5" class="empty">Nenhum garçom cadastrado.</td></tr>'
+  renderRelatorio()
+}
+
+function novoGarcom() {
+  document.getElementById('modalTitulo').textContent = 'Novo Garçom'
+  document.getElementById('garcomId').value = ''
+  document.getElementById('garcomCodigo').value = ''
+  document.getElementById('garcomNome').value = ''
+  document.getElementById('garcomAtivo').value = '1'
+  document.getElementById('modalGarcom').style.display = 'flex'
+  setTimeout(() => document.getElementById('garcomNome').focus(), 50)
+}
+
+function editarGarcom(id) {
+  const g = getGarcom(id)
+  if (!g) return
+  document.getElementById('modalTitulo').textContent = 'Editar Garçom'
+  document.getElementById('garcomId').value = g.id
+  document.getElementById('garcomCodigo').value = g.codigo || ''
+  document.getElementById('garcomNome').value = g.nome || ''
+  document.getElementById('garcomAtivo').value = g.ativo !== false ? '1' : '0'
+  document.getElementById('modalGarcom').style.display = 'flex'
+}
+
+function fecharModal() { document.getElementById('modalGarcom').style.display = 'none' }
+
+function salvarGarcom() {
+  const id = Number(document.getElementById('garcomId').value || 0)
+  const dados = {
+    codigo: document.getElementById('garcomCodigo').value,
+    nome: document.getElementById('garcomNome').value,
+    ativo: document.getElementById('garcomAtivo').value === '1'
+  }
+  const resultado = id ? atualizarGarcom({ id, ...dados }) : inserirGarcom(dados)
+  if (!resultado?.ok) return avisoModal(resultado?.erro || 'Não foi possível salvar o garçom.')
+  fecharModal()
+  aviso('ok', 'Garçom salvo com sucesso!')
+  renderEquipe()
+}
+
+function alternarStatus(id) {
+  const g = getGarcom(id)
+  if (!g) return
+  const resultado = atualizarGarcom({ id, ativo: g.ativo === false })
+  if (!resultado?.ok) return aviso('erro', resultado?.erro || 'Não foi possível alterar o status.')
+  renderEquipe()
+}
+
+function excluirGarcom(id) {
+  const g = getGarcom(id)
+  if (!g) return
+  confirmar(`Excluir o garçom ${esc(g.nome)}? O histórico das comandas será preservado.`, ok => {
+    if (!ok) return
+    const resultado = deletarGarcom(id)
+    if (!resultado?.ok) return aviso('erro', resultado?.erro || 'Não foi possível excluir.')
+    aviso('ok', 'Garçom excluído.')
+    renderEquipe()
+  })
+}
+
+function exportarCSV() {
+  const relatorio = getRelatorioGarcons(filtrosRelatorio())
+  const linhas = relatorio.garcons.filter(g => g.comandas > 0 || g.ativo)
+  if (!linhas.length) return aviso('erro', 'Nenhum dado para exportar.')
+  const csvEsc = v => `"${String(v ?? '').replace(/"/g, '""')}"`
+  let csv = '\uFEFFCódigo,Garçom,Comandas,Itens,Ticket Médio,Total Vendido\r\n'
+  linhas.forEach(g => {
+    csv += [csvEsc(g.codigo), csvEsc(g.nome), g.comandas, g.itens, g.ticket_medio.toFixed(2).replace('.', ','), g.total.toFixed(2).replace('.', ',')].join(',') + '\r\n'
+  })
+  csv += `\r\n"TOTAL","",${relatorio.comandas},${relatorio.itens},"${relatorio.ticket_medio.toFixed(2).replace('.', ',')}","${relatorio.total.toFixed(2).replace('.', ',')}"\r\n`
+  ipcRenderer.invoke('salvar-csv', {
+    conteudo: csv,
+    nomeArquivo: `MesaUp_Vendas_Garcons_${relatorio.periodo.inicio}_a_${relatorio.periodo.fim}.csv`
+  }).then(r => {
+    if (r?.sucesso) aviso('ok', 'Relatório exportado: ' + r.caminho)
+    else if (!r || r.motivo !== 'cancelado') aviso('erro', 'Não foi possível exportar o relatório.')
+  })
+}
+
+periodoMes()
+renderEquipe()
+</script>
+</body></html>

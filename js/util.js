@@ -6,8 +6,11 @@ function fmtData(d) {
   const p = d.split('-')
   return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : d
 }
-function dataHoje() { return new Date().toISOString().split('T')[0] }
-function mesAtual()  { return new Date().toISOString().slice(0,7) }
+function dataHoje() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+function mesAtual()  { return dataHoje().slice(0,7) }
 function horaAgora() { return new Date().toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) }
 
 function getTema() { return localStorage.getItem('@MESAUP:tema') || 'dark' }

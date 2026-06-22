@@ -2,8 +2,15 @@ name: Build & Release
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 12 * * 1"
+    inputs:
+      release_version:
+        description: "Versao exata (ex: 2.0.0). Vazio incrementa patch."
+        required: false
+        type: string
+      release_notes:
+        description: "Notas exibidas dentro do aplicativo."
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -46,12 +53,26 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Bump patch version
+      - name: Run tests
+        run: npm test
+
+      - name: Set release version
         shell: pwsh
+        env:
+          REQUESTED_VERSION: ${{ inputs.release_version }}
+          REQUESTED_NOTES: ${{ inputs.release_notes }}
         run: |
-          npm version patch --no-git-tag-version
+          $requested = $env:REQUESTED_VERSION
+          if ([string]::IsNullOrWhiteSpace($requested)) {
+            npm version patch --no-git-tag-version
+          } else {
+            npm version $requested --no-git-tag-version --allow-same-version
+          }
           $pkg = Get-Content package.json -Raw | ConvertFrom-Json
           "APP_VERSION=$($pkg.version)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $notes = $env:REQUESTED_NOTES
+          if ([string]::IsNullOrWhiteSpace($notes)) { $notes = "${{ env.PRODUCT_NAME }} v$($pkg.version) - nova versao disponivel." }
+          "RELEASE_NOTES=$notes" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Build setup
         run: npm run build -- --publish never
@@ -76,22 +97,12 @@ jobs:
           $staticName = "${{ env.PRODUCT_NAME }}.Setup.exe"
           $staticPath = Join-Path $setup.DirectoryName $staticName
           Copy-Item $setup.FullName $staticPath -Force
+          $setupSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $staticPath).Hash.ToLowerInvariant()
 
           "SETUP_NAME=$staticName" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "SETUP_PATH=$staticPath" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "SETUP_SHA256=$setupSha256" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           "SETUP_ORIGINAL=$($setup.Name)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Delete old releases
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $releases = gh release list --json tagName --jq '.[].tagName' 2>$null
-          foreach ($tag in $releases) {
-            if ($tag -and $tag -ne "v$env:APP_VERSION") {
-              gh release delete $tag --yes --cleanup-tag 2>$null
-            }
-          }
 
       - name: Create release with static asset name
         uses: softprops/action-gh-release@v3
@@ -100,6 +111,7 @@ jobs:
           name: ${{ env.PRODUCT_NAME }} v${{ env.APP_VERSION }}
           body: |
             ${{ env.PRODUCT_NAME }} v${{ env.APP_VERSION }}
+            ${{ env.RELEASE_NOTES }}
             Download: [${{ env.SETUP_NAME }}](https://github.com/${{ github.repository }}/releases/latest/download/${{ env.SETUP_NAME }})
           files: |
             ${{ env.SETUP_PATH }}
@@ -112,7 +124,8 @@ jobs:
           $manifest = @{
             version = $env:APP_VERSION
             download_url = "https://github.com/${{ github.repository }}/releases/latest/download/$env:SETUP_NAME"
-            notes = "${{ env.PRODUCT_NAME }} v$env:APP_VERSION - atualizacao automatica."
+            sha256 = $env:SETUP_SHA256
+            notes = $env:RELEASE_NOTES
           } | ConvertTo-Json -Depth 3
           [System.IO.File]::WriteAllText("update-manifest.json", $manifest, (New-Object System.Text.UTF8Encoding $false))
 

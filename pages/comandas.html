@@ -38,7 +38,7 @@
     <div class="modal-title" id="detalhe_titulo">Comanda</div>
     <input type="hidden" id="detalhe_id">
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div id="detalheGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <div>
         <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Itens do Pedido</div>
         <div id="listaItens" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;min-height:180px;max-height:320px;overflow-y:auto;padding:10px"></div>
@@ -58,7 +58,7 @@
         </div>
       </div>
 
-      <div>
+      <div id="areaAdicionarItem">
         <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Adicionar Item</div>
         <div class="form-group" style="margin-bottom:10px">
           <label class="form-label">Buscar no Cardapio</label>
@@ -78,20 +78,30 @@
       </div>
     </div>
 
+    <div id="transferenciaArea" style="margin-top:16px;padding:12px 14px;background:var(--blue-bg);border:1px solid rgba(79,142,247,.28);border-radius:10px;display:flex;align-items:flex-end;gap:10px">
+      <div class="form-group" style="flex:1">
+        <label class="form-label">Transferir comanda para</label>
+        <select id="transferMesaDestino"></select>
+      </div>
+      <button class="btn btn-ghost" id="btnTransferirComanda" onclick="transferirComandaAtual()">Transferir Mesa</button>
+    </div>
+
     <div id="fecharArea" style="margin-top:16px;padding:14px;background:var(--card2);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-      <div class="form-group fg2">
+      <div class="form-group fg2" id="pagamentoArea">
         <label class="form-label">Forma de Pagamento</label>
         <select id="formaPgto">
           <option>Dinheiro</option>
           <option>PIX</option>
           <option>Cartao de Credito</option>
           <option>Cartao de Debito</option>
+          <option>Fiado</option>
           <option>Outro</option>
         </select>
       </div>
       <button class="btn btn-primary" onclick="imprimirContaMesa()" style="margin-top:16px">🖨️ Imprimir Conta</button>
-      <button class="btn btn-green" onclick="fecharComandaAtual()" style="margin-top:16px">Fechar e Cobrar</button>
-      <button class="btn btn-red" onclick="cancelarComandaAtual()" style="margin-top:16px">Cancelar Comanda</button>
+      <button class="btn btn-green" onclick="salvarContaPDF()" style="margin-top:16px">📄 Salvar PDF</button>
+      <button class="btn btn-green" id="btnFecharComanda" onclick="fecharComandaAtual()" style="margin-top:16px">Fechar e Cobrar</button>
+      <button class="btn btn-red" id="btnCancelarComanda" onclick="cancelarComandaAtual()" style="margin-top:16px">Cancelar Comanda</button>
     </div>
 
     <div class="modal-acts">
@@ -102,11 +112,18 @@
 
 <script>
 aplicarTemaAtual()
-const { getConfig, listarComandas, getComanda, adicionarItemComanda, removerItemComanda, fecharComanda, cancelarComanda, listarCardapio, getEstoqueItem } = require('../js/db.js')
+const { getConfig, listarMesas, listarComandas, getComanda, transferirComanda, adicionarItemComanda, removerItemComanda, fecharComanda, cancelarComanda, listarCardapio, getEstoqueItem } = require('../js/db.js')
+const { ipcRenderer } = require('electron')
 let comandaAtualId = null
 
 function esc(v) {
   return String(v || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]))
+}
+
+function rotuloGarcom(c) {
+  const codigo = String(c?.garcom_codigo || '').trim()
+  const nome = String(c?.garcom || '').trim()
+  return [codigo ? `#${codigo}` : '', nome].filter(Boolean).join(' - ')
 }
 
 function tituloSetor(setor) {
@@ -133,8 +150,8 @@ function render() {
   }
 
   el.innerHTML = lista.map(c => `
-    <div style="background:var(--card);border:2px solid ${c.status==='aberta'?'var(--orange)':c.status==='fechada'?'var(--green)':'var(--border)'};border-radius:14px;padding:16px 18px;margin-bottom:12px;cursor:${c.status==='aberta'?'pointer':'default'}"
-      onclick="${c.status==='aberta' ? `abrirDetalhe(${c.id})` : ''}">
+    <div style="background:var(--card);border:2px solid ${c.status==='aberta'?'var(--orange)':c.status==='fechada'?'var(--green)':'var(--border)'};border-radius:14px;padding:16px 18px;margin-bottom:12px;cursor:pointer"
+      onclick="abrirDetalhe(${c.id})">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
         <div>
           <div style="font-size:16px;font-weight:800;color:var(--fg)">Mesa ${c.mesa_num || '-'}
@@ -142,7 +159,7 @@ function render() {
           </div>
           <div style="font-size:12px;color:var(--muted);margin-top:3px">
             Aberta: ${c.abertura ? c.abertura.slice(0,16).replace('T',' ') : '-'}
-            ${c.consumidor ? ' · Cliente: ' + c.consumidor : ''}${c.garcom ? ' · Garcom: ' + c.garcom : ''}
+            ${c.consumidor ? ' · Cliente: ' + esc(c.consumidor) : ''}${rotuloGarcom(c) ? ' · Garçom: ' + esc(rotuloGarcom(c)) : ''}
           </div>
         </div>
         <div style="text-align:right">
@@ -150,7 +167,7 @@ function render() {
           <div style="font-size:11px;color:var(--muted)">${(c.itens || []).length} item(s)</div>
         </div>
       </div>
-      ${c.status==='aberta' ? '<div style="font-size:11px;color:var(--orange);margin-top:8px;font-weight:600">Clique para ver e gerenciar pedidos -></div>' : ''}
+      <div style="font-size:11px;color:${c.status==='aberta'?'var(--orange)':'var(--muted)'};margin-top:8px;font-weight:600">${c.status==='aberta'?'Clique para ver e gerenciar pedidos →':'Clique para consultar, imprimir ou salvar PDF →'}</div>
     </div>`).join('')
 }
 
@@ -187,8 +204,9 @@ function fecharModal() {
 function renderDetalhe() {
   const c = getComanda(comandaAtualId)
   if (!c) return
+  const aberta = c.status === 'aberta'
 
-  document.getElementById('detalhe_titulo').textContent = `Mesa ${c.mesa_num} - Comanda #${c.id}${c.consumidor ? ' - Cliente: ' + c.consumidor : ''}`
+  document.getElementById('detalhe_titulo').textContent = `Mesa ${c.mesa_num} - Comanda #${c.id}${c.consumidor ? ' - Cliente: ' + c.consumidor : ''} (${c.status})`
   document.getElementById('detalhe_id').value = c.id
   document.getElementById('detalhe_total').textContent = fmtMoeda(c.total || 0)
 
@@ -202,10 +220,35 @@ function renderDetalhe() {
       </div>
       <div style="font-size:12px;color:var(--muted);white-space:nowrap">${it.qtd}x ${fmtMoeda(it.preco)}</div>
       <div style="font-weight:700;color:var(--primary);white-space:nowrap">${fmtMoeda(it.preco * it.qtd)}</div>
-      <button class="btn-danger" onclick="removerItem(${it.item_id})" title="Remover">X</button>
+      ${aberta ? `<button class="btn-danger" onclick="removerItem(${it.item_id})" title="Remover">X</button>` : ''}
     </div>`).join('')
   : '<div style="color:var(--muted);font-size:13px;padding:20px;text-align:center">Nenhum item adicionado.</div>'
+  document.getElementById('areaAdicionarItem').style.display = aberta ? '' : 'none'
+  document.getElementById('detalheGrid').style.gridTemplateColumns = aberta ? '1fr 1fr' : '1fr'
+  document.getElementById('pagamentoArea').style.display = aberta ? '' : 'none'
+  document.getElementById('btnFecharComanda').style.display = aberta ? '' : 'none'
+  document.getElementById('btnCancelarComanda').style.display = aberta ? '' : 'none'
+  const mesasLivres = aberta ? listarMesas().filter(m => Number(m.id) !== Number(c.mesa_id) && m.status === 'livre') : []
+  const transferenciaArea = document.getElementById('transferenciaArea')
+  transferenciaArea.style.display = aberta ? 'flex' : 'none'
+  document.getElementById('transferMesaDestino').innerHTML = mesasLivres.length
+    ? '<option value="">Selecione a mesa livre...</option>' + mesasLivres.map(m => `<option value="${m.id}">Mesa ${esc(m.numero)}</option>`).join('')
+    : '<option value="">Nenhuma mesa livre disponivel</option>'
+  document.getElementById('btnTransferirComanda').disabled = !mesasLivres.length
   atualizarDivisao()
+}
+
+function transferirComandaAtual() {
+  const destinoId = Number(document.getElementById('transferMesaDestino').value || 0)
+  if (!destinoId) return avisoModal('Selecione a mesa de destino.')
+  const origem = getComanda(comandaAtualId)
+  confirmar(`Transferir a comanda da Mesa ${origem?.mesa_num || ''} para a mesa selecionada?`, ok => {
+    if (!ok) return
+    const resultado = transferirComanda(comandaAtualId, destinoId)
+    if (!resultado?.ok) return avisoModal(resultado?.erro || 'Nao foi possivel transferir a comanda.')
+    renderDetalhe()
+    aviso('ok', `Comanda transferida para Mesa ${resultado.comanda.mesa_num}.`)
+  })
 }
 
 function atualizarDivisao() {
@@ -389,7 +432,7 @@ function gerarHTMLContaMesa(c) {
       <div class="meta">
         <div><b>Comanda:</b> #${esc(c.id)}</div>
         ${c.consumidor ? `<div><b>Cliente:</b> ${esc(c.consumidor)}</div>` : ''}
-        ${c.garcom ? `<div><b>Garçom:</b> ${esc(c.garcom)}</div>` : ''}
+        ${rotuloGarcom(c) ? `<div><b>Garçom:</b> ${esc(rotuloGarcom(c))}</div>` : ''}
       </div>
       <div class="line"></div>
       <table>${linhasItensConta(c)}</table>
@@ -404,6 +447,18 @@ function imprimirContaMesa() {
   const c = getComanda(comandaAtualId)
   if (!c || !(c.itens || []).length) return avisoModal('Adicione pelo menos um item antes de imprimir a conta.')
   imprimirHTML(gerarHTMLContaMesa(c))
+}
+
+async function salvarContaPDF() {
+  const c = getComanda(comandaAtualId)
+  if (!c || !(c.itens || []).length) return avisoModal('Adicione pelo menos um item antes de salvar a conta.')
+  const mesa = String(c.mesa_num || 'sem-mesa').replace(/[^a-z0-9_-]+/gi, '-')
+  const resultado = await ipcRenderer.invoke('salvar-pdf', {
+    htmlContent: gerarHTMLContaMesa(c),
+    nomeArquivo: `MesaUp_Mesa_${mesa}_Comanda_${c.id}.pdf`
+  })
+  if (resultado?.sucesso) avisoModal(`PDF salvo em:<br><b>${esc(resultado.caminho)}</b>`)
+  else if (!resultado || resultado.motivo !== 'cancelado') avisoModal(`Não foi possível salvar o PDF.${resultado?.mensagem ? '<br>' + esc(resultado.mensagem) : ''}`)
 }
 
 function gerarHTMLPedidoPreparo(c, item) {
@@ -429,7 +484,7 @@ function gerarHTMLPedidoPreparo(c, item) {
       <div class="meta">
         <div><b>Comanda:</b> #${esc(c?.id || '')}</div>
         ${c?.consumidor ? `<div><b>Cliente:</b> ${esc(c.consumidor)}</div>` : ''}
-        ${c?.garcom ? `<div><b>Garçom:</b> ${esc(c.garcom)}</div>` : ''}
+        ${rotuloGarcom(c) ? `<div><b>Garçom:</b> ${esc(rotuloGarcom(c))}</div>` : ''}
         <div><b>Horário:</b> ${new Date().toLocaleString('pt-BR')}</div>
       </div>
       <div class="item">
@@ -450,7 +505,8 @@ function fecharComandaAtual() {
   if (!c || !c.itens || c.itens.length === 0) return avisoModal('Adicione pelo menos um item antes de fechar.')
 
   const forma = document.getElementById('formaPgto').value
-  fecharComanda(comandaAtualId, forma)
+  const resultado = fecharComanda(comandaAtualId, forma)
+  if (resultado?.ok === false) return avisoModal(resultado.erro || 'Nao foi possivel fechar a comanda.')
   document.getElementById('modalDetalhe').style.display = 'none'
   aviso('ok', `Mesa ${c.mesa_num} fechada! Total: ${fmtMoeda(c.total)}`)
   render()

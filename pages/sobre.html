@@ -8,23 +8,28 @@
     <div style="width:60px;height:60px;background:linear-gradient(135deg,#f97316,#fbbf24);border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:32px;box-shadow:0 8px 24px rgba(249,115,22,0.35);flex-shrink:0">🍺</div>
     <div>
       <div style="font-size:26px;font-weight:900;color:var(--fg)">Mesa<span style="color:#fbbf24">Up</span></div>
-      <div style="font-size:12px;color:var(--muted);margin-top:3px">Versão 1.0.0 — Sistema de Gestão para Bares e Lanchonetes</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:3px">Versão <span id="appVersion">—</span> — Sistema de Gestão para Bares e Lanchonetes</div>
     </div>
   </div>
 
   <div class="info-sec"><h3>Sobre o Sistema</h3>
-    <p style="font-size:13px;color:var(--fg2);line-height:1.8">O MesaUp é um sistema desktop completo para bares, lanchonetes e estabelecimentos de alimentação. Gerencie mesas, comandas, PDV, delivery, clientes, cardápio, estoque e financeiro em um único programa. Funciona 100% offline, sem internet e sem mensalidade.</p>
+    <p style="font-size:13px;color:var(--fg2);line-height:1.8">O MesaUp é um sistema desktop completo para bares, lanchonetes e estabelecimentos de alimentação. Gerencie mesas, comandas, garçons, PDV, delivery, clientes, cardápio, estoque e financeiro em um único programa. Os dados operacionais ficam no computador; internet é necessária para ativação, validação periódica da licença, atualizações e publicação do cardápio online.</p>
   </div>
 
   <div class="info-sec"><h3>Funcionalidades</h3>
     <div class="feat-grid">
       <div class="feat-item">✅ Mapa visual de mesas</div>
+      <div class="feat-item">✅ Planta configurável do salão</div>
       <div class="feat-item">✅ Abertura de comanda por mesa</div>
+      <div class="feat-item">✅ Transferência entre mesas</div>
       <div class="feat-item">✅ Adição de pedidos com busca no cardápio</div>
       <div class="feat-item">✅ Fechamento com forma de pagamento</div>
+      <div class="feat-item">✅ Cadastro e vendas por garçom</div>
+      <div class="feat-item">✅ Impressão e exportação da conta em PDF</div>
       <div class="feat-item">✅ PDV rápido para venda no balcão</div>
       <div class="feat-item">✅ Controle de delivery e retirada</div>
       <div class="feat-item">✅ CRM de clientes e histórico</div>
+      <div class="feat-item">✅ Fiado, limite e pagamentos parciais</div>
       <div class="feat-item">✅ Divisão automática de conta</div>
       <div class="feat-item">✅ Cardápio por categorias</div>
       <div class="feat-item">✅ Controle de estoque com alertas</div>
@@ -32,7 +37,7 @@
       <div class="feat-item">✅ Financeiro automático</div>
       <div class="feat-item">✅ Exportação para Excel</div>
       <div class="feat-item">✅ Tema escuro e claro</div>
-      <div class="feat-item">✅ 100% offline, sem mensalidade</div>
+      <div class="feat-item">✅ Dados locais, sem mensalidade</div>
     </div>
   </div>
 
@@ -43,5 +48,8 @@
   </div>
   <div style="text-align:center;padding:16px;font-size:12px;color:var(--muted)">© 2026 GHZ Plugin — Todos os direitos reservados</div>
 </div>
-<script>aplicarTemaAtual()</script>
+<script>
+aplicarTemaAtual()
+document.getElementById('appVersion').textContent = require('../package.json').version
+</script>
 </body></html>
