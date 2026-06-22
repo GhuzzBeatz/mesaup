@@ -17,7 +17,6 @@
   </script>
 </head>
 <body>
-<div class="app-titlebar">Mesa<span>Up</span></div>
 <div class="container">
 
   <div class="menu">
@@ -88,20 +87,38 @@
           <span id="temaIcon">☀️</span>
           <span id="temaLabel">Modo Claro</span>
         </button>
-        <div class="menu-footer-contact">
-          <span class="support-brand">GHZ PLUGIN</span>
-          <span class="support-phone">11948981459</span>
-          <span class="support-site">GHZPLUGIN.COM.BR</span>
-        </div>
+        <section class="support-card">
+          <div class="support-header">
+            <div class="support-logo-circle"><img src="assets/logo-ghz.png" alt="Logo GHZ Plugin"></div>
+            <div class="support-title"><h3>GHZ Plugin</h3><p>Suporte oficial</p></div>
+          </div>
+          <div class="support-info">
+            <a class="support-item" href="https://wa.me/5511948981459" onclick="abrirExterno(this.href);return false">
+              <span class="support-icon">📱</span><div><small>WhatsApp</small><strong>(11) 94898-1459</strong></div>
+            </a>
+            <a class="support-item" href="https://ghzplugin.com.br" onclick="abrirExterno(this.href);return false">
+              <span class="support-icon">🌐</span><div><small>Site oficial</small><strong>ghzplugin.com.br</strong></div>
+            </a>
+          </div>
+          <div class="support-footer"><span class="status-dot"></span>Atendimento para clientes</div>
+        </section>
       </div>
   </div>
 
   <div class="conteudo">
+    <div class="content-titlebar" ondblclick="if(event.target===this)alternarMaximizacao()">
+      <div class="window-controls">
+        <button type="button" aria-label="Minimizar" onclick="minimizarJanela()">&#8722;</button>
+        <button type="button" aria-label="Maximizar ou restaurar" onclick="alternarMaximizacao()">&#9633;</button>
+        <button type="button" class="window-close" aria-label="Fechar" onclick="fecharJanela()">&#10005;</button>
+      </div>
+    </div>
     <iframe id="frame" src="pages/dashboard.html"></iframe>
   </div>
 
 </div>
 <script>
+  const { ipcRenderer } = require('electron')
   const tema = localStorage.getItem('@MESAUP:tema') || 'dark'
   document.documentElement.setAttribute('data-tema', tema)
   document.getElementById('temaIcon').textContent  = tema === 'dark' ? '☀️' : '🌙'
@@ -124,6 +141,11 @@
     const frame = document.getElementById('frame')
     frame.src = frame.src
   }
+
+  function minimizarJanela() { ipcRenderer.send('window:minimize') }
+  function alternarMaximizacao() { ipcRenderer.send('window:toggle-maximize') }
+  function fecharJanela() { ipcRenderer.send('window:close') }
+  function abrirExterno(url) { ipcRenderer.send('open-external', url) }
 
   function atualizarBadges() {
     try {

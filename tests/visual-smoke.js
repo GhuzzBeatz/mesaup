@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron')
+const { app, BrowserWindow, ipcMain } = require('electron')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
@@ -9,6 +9,10 @@ const dataDir = path.join(runDir, 'data')
 const outputDir = path.join(runDir, 'output')
 fs.mkdirSync(dataDir, { recursive: true })
 fs.mkdirSync(outputDir, { recursive: true })
+
+ipcMain.handle('license:device-info', async () => ({ device_hash: 'visual-test', device_name: 'Visual Test' }))
+ipcMain.handle('license:get-state', async () => ({ active: true }))
+ipcMain.handle('license:validate', async () => ({ ok: true, license_key: 'MESAUP-TESTE-VISUAL', customer_name: 'Teste Visual', last_seen_at: new Date().toISOString() }))
 
 const now = new Date()
 const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -74,6 +78,11 @@ async function capture(win, page, fileName, query) {
 
 async function captureApp(win, fileName) {
   await win.loadFile(path.join(root, 'index.html'))
+  await new Promise(resolve => setTimeout(resolve, 120))
+  const license = JSON.stringify({ active: true, license_key: 'MESAUP-TESTE-VISUAL', customer_name: 'Teste Visual', last_validated_at: new Date().toISOString() })
+  const session = JSON.stringify({ ok: true, at: new Date().toISOString() })
+  await win.webContents.executeJavaScript(`localStorage.setItem('@MESAUP:licenca_cache', ${JSON.stringify(license)}); sessionStorage.setItem('@MESAUP:licenca_sessao', ${JSON.stringify(session)})`)
+  await win.loadFile(path.join(root, 'index.html'))
   await waitForRender(win)
   const image = await win.webContents.capturePage()
   const filePath = path.join(outputDir, fileName)
@@ -89,6 +98,7 @@ app.whenReady().then(async () => {
     backgroundColor: '#111827',
     webPreferences: {
       nodeIntegration: true,
+      nodeIntegrationInSubFrames: true,
       contextIsolation: false,
       offscreen: true,
       additionalArguments: [`--data-dir=${dataDir}`]

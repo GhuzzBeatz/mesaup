@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, session } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, session, shell } = require('electron')
 const path = require('path')
 const fs   = require('fs')
 
@@ -23,12 +23,7 @@ function createWindow() {
     minHeight: 700,
     title: 'MesaUp',
     backgroundColor: '#111827',
-    titleBarStyle: 'hidden',
-    titleBarOverlay: {
-      color: '#111827',
-      symbolColor: '#e8eaf0',
-      height: 28
-    },
+    frame: false,
     autoHideMenuBar: true,
     show: false,
     webPreferences: {
@@ -41,10 +36,24 @@ function createWindow() {
   })
 
   win.loadFile('index.html')
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https:\/\//i.test(url)) shell.openExternal(url)
+    return { action: 'deny' }
+  })
   win.once('ready-to-show', () => { win.show(); win.focus() })
   setTimeout(() => { if (win && !win.isVisible()) win.show() }, 4000)
   win.on('page-title-updated', e => e.preventDefault())
 }
+
+ipcMain.on('window:minimize', () => win?.minimize())
+ipcMain.on('window:toggle-maximize', () => {
+  if (!win) return
+  win.isMaximized() ? win.unmaximize() : win.maximize()
+})
+ipcMain.on('window:close', () => win?.close())
+ipcMain.on('open-external', (event, url) => {
+  if (/^https:\/\/(wa\.me|(?:www\.)?ghzplugin\.com\.br)(?:\/|$)/i.test(String(url || ''))) shell.openExternal(url)
+})
 
 // ── SALVAR PDF ─────────────────────────────────────────────
 ipcMain.handle('salvar-pdf', async (event, { htmlContent, nomeArquivo }) => {
