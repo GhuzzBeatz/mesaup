@@ -90,7 +90,7 @@ html,body{ height:100%; font-family:'Segoe UI','Helvetica Neue',Arial,sans-serif
 .conteudo{ flex:1; min-width:0; overflow:hidden; background:var(--bg); display:flex; flex-direction:column; }
 .content-titlebar{ height:var(--titlebar-h); flex-shrink:0; background:var(--bg); -webkit-app-region:drag; display:flex; justify-content:flex-end; }
 .window-controls{ height:100%; display:flex; -webkit-app-region:no-drag; }
-.window-controls button{ width:46px; height:100%; border:0; border-radius:0; background:transparent; color:var(--fg2); font:14px 'Segoe UI',sans-serif; cursor:pointer; transition:background .15s,color .15s; }
+.window-controls button{ width:46px; height:100%; border:0; border-radius:0; background:transparent; color:var(--fg2); font-family:'Segoe MDL2 Assets','Segoe UI',sans-serif; font-size:10px; line-height:1; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; transition:background .15s,color .15s; }
 .window-controls button:hover{ background:rgba(255,255,255,.08); color:var(--fg); }
 .window-controls .window-close:hover{ background:#c42b1c; color:#fff; }
 iframe{ width:100%; min-height:0; flex:1; border:none; }
@@ -111,8 +111,8 @@ iframe{ width:100%; min-height:0; flex:1; border:none; }
 .nav-icon{ font-size:15px; flex-shrink:0; }
 .nav-sep{ height:1px; background:rgba(255,255,255,0.06); margin:6px 4px; }
 .nav-badge{ background:var(--red); color:#fff; border-radius:99px; font-size:10px; font-weight:800; min-width:18px; height:18px; display:none; align-items:center; justify-content:center; padding:0 5px; margin-left:auto; }
-.menu-footer{ padding:8px; background:var(--sidebar-bg); }
-.btn-tema{ width:100%; padding:8px 11px; border:1px solid rgba(255,255,255,0.1); border-radius:8px; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.6); cursor:pointer; font-size:12px; font-weight:600; display:flex; align-items:center; gap:8px; transition:all .15s; margin-bottom:10px; font-family:inherit; }
+.menu-footer{ padding:8px 9px; background:var(--sidebar-bg); }
+.btn-tema{ width:100%; padding:8px 6px; border:1px solid rgba(255,255,255,0.1); border-radius:8px; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.6); cursor:pointer; font-size:12px; font-weight:600; display:flex; align-items:center; gap:8px; transition:all .15s; margin-bottom:10px; font-family:inherit; }
 .btn-tema:hover{ background:rgba(255,255,255,0.1); color:#fff; }
 .support-card{ width:100%; min-width:0; padding:9px; border-radius:12px; background:transparent; border:0; box-shadow:none; color:#fff; overflow:hidden; }
 .support-header{ display:flex; align-items:center; gap:8px; margin-bottom:9px; }

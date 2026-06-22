@@ -107,9 +107,9 @@
   <div class="conteudo">
     <div class="content-titlebar" ondblclick="if(event.target===this)alternarMaximizacao()">
       <div class="window-controls">
-        <button type="button" aria-label="Minimizar" onclick="minimizarJanela()">&#8722;</button>
-        <button type="button" aria-label="Maximizar ou restaurar" onclick="alternarMaximizacao()">&#9633;</button>
-        <button type="button" class="window-close" aria-label="Fechar" onclick="fecharJanela()">&#10005;</button>
+        <button type="button" aria-label="Minimizar" onclick="minimizarJanela()"><svg width="10" height="1" viewBox="0 0 10 1"><line x1="0" y1="0.5" x2="10" y2="0.5" stroke="currentColor" stroke-width="1"/></svg></button>
+        <button type="button" aria-label="Maximizar ou restaurar" onclick="alternarMaximizacao()"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" stroke-width="1"/></svg></button>
+        <button type="button" class="window-close" aria-label="Fechar" onclick="fecharJanela()"><svg width="10" height="10" viewBox="0 0 10 10"><line x1="0" y1="0" x2="10" y2="10" stroke="currentColor" stroke-width="1.2"/><line x1="10" y1="0" x2="0" y2="10" stroke="currentColor" stroke-width="1.2"/></svg></button>
       </div>
     </div>
     <iframe id="frame" src="pages/dashboard.html"></iframe>
