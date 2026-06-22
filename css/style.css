@@ -116,8 +116,8 @@ iframe{ width:100%; min-height:0; flex:1; border:none; }
 .btn-tema:hover{ background:rgba(255,255,255,0.1); color:#fff; }
 .support-card{ width:100%; min-width:0; padding:0; border-radius:12px; background:transparent; border:0; box-shadow:none; color:#fff; overflow:hidden; }
 .support-header{ display:flex; align-items:center; gap:8px; margin-bottom:9px; }
-.support-logo-circle{ width:36px; height:36px; min-width:36px; overflow:hidden; border-radius:50%; border:1px solid rgba(255,153,0,.65); box-shadow:0 0 10px rgba(255,140,0,.28); background:#000; }
-.support-logo-circle img{ width:100%; height:100%; object-fit:cover; display:block; }
+.support-logo-circle{ width:42px; height:42px; min-width:42px; overflow:hidden; border-radius:50%; border:1px solid rgba(255,153,0,.65); box-shadow:0 0 10px rgba(255,140,0,.28); background:#000; }
+.support-logo-circle img{ width:100%; height:100%; object-fit:cover; display:block; image-rendering:-webkit-optimize-contrast; image-rendering:crisp-edges; }
 .support-title{ min-width:0; }
 .support-title h3{ margin:0; color:#fff; font-size:13px; font-weight:800; white-space:nowrap; }
 .support-title p{ margin:1px 0 0; color:#b8c0cc; font-size:9.5px; }
