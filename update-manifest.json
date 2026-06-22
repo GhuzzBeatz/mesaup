@@ -1,6 +1,6 @@
 {
-  "notes": "MesaUp v2.0.8 - nova versao disponivel.",
+  "version": "2.0.9",
+  "sha256": "73445965ad75bd9565454f6513625e4e9bfb1e62ab52f9472af74b7f7899c95c",
   "download_url": "https://github.com/GhuzzBeatz/mesaup/releases/latest/download/MesaUp.Setup.exe",
-  "version": "2.0.8",
-  "sha256": "eed9bb853d90267c80908e1ba0412689690246fd6e21a4d82e1369d6c2236974"
+  "notes": "MesaUp v2.0.9 - nova versao disponivel."
 }
