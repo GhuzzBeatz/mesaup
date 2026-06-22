@@ -1,5 +1,6 @@
 {
-  "version": "1.0.2",
+  "notes": "MesaUp v2.0.0 - planta do salao, transferencia de comandas, clientes vinculados, fiado, pagamentos parciais e relatorio de garcons.",
+  "sha256": "dd5895b2eacf8b134e4e692c5ac8bf5b9cf79cccb6f229839ab3cec6316ef53e",
   "download_url": "https://github.com/GhuzzBeatz/mesaup/releases/latest/download/MesaUp.Setup.exe",
-  "notes": "MesaUp v1.0.2 - atualizacao automatica."
+  "version": "2.0.0"
 }
