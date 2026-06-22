@@ -163,11 +163,12 @@ module.exports = function setup(config) {
         update_available: newer,
         pending_version: newer ? m.version : '',
         pending_download_url: newer ? m.download_url : '',
+        pending_sha256: newer ? (m.sha256 || '') : '',
         pending_notes: newer ? (m.notes || '') : '',
         first_detected_at: newer ? (us.first_detected_at || new Date().toISOString()) : '',
         last_error: ''
       })
-      return { ok: true, update_available: newer, current_version: current, latest_version: m.version, download_url: m.download_url, notes: m.notes }
+      return { ok: true, update_available: newer, current_version: current, latest_version: m.version, download_url: m.download_url, sha256: m.sha256 || '', notes: m.notes }
     } catch (e) {
       saveUpdateState({ last_error: e.message })
       return { ok: false, error: e.message }
@@ -200,6 +201,13 @@ module.exports = function setup(config) {
     const fileName = r.download_url.split('/').pop() || `${appId}-setup.exe`
     const dest = path.join(tmpDir, fileName)
     await downloadFile(r.download_url, dest)
+    if (r.sha256) {
+      const hash = crypto.createHash('sha256').update(fs.readFileSync(dest)).digest('hex')
+      if (hash.toLowerCase() !== String(r.sha256).toLowerCase()) {
+        try { fs.unlinkSync(dest) } catch (e) {}
+        return { ok: false, message: 'O instalador baixado falhou na verificacao de seguranca.' }
+      }
+    }
     const child = spawn(dest, [], { detached: true, stdio: 'ignore', windowsHide: false })
     child.unref()
     setTimeout(() => app.quit(), 800)
