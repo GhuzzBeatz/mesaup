@@ -4,6 +4,9 @@ const fs   = require('fs')
 
 app.setName('MesaUp')
 
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) app.quit()
+
 function getDataDir() {
   return app.isPackaged
     ? path.join(app.getPath('userData'), 'data')
@@ -11,6 +14,22 @@ function getDataDir() {
 }
 
 let win = null
+let ghzBackend = null
+
+app.on('second-instance', () => {
+  if (!win) return
+  if (win.isMinimized()) win.restore()
+  win.show()
+  win.focus()
+})
+
+function isLicensePageUrl(url) {
+  try { return decodeURIComponent(new URL(url).pathname).replace(/\\/g, '/').endsWith('/pages/licenca.html') } catch (e) { return false }
+}
+
+function loadLicensePage() {
+  if (win && !win.isDestroyed()) win.loadFile('pages/licenca.html').catch(() => {})
+}
 
 function createWindow() {
   const dir = getDataDir()
@@ -31,14 +50,21 @@ function createWindow() {
       nodeIntegrationInSubFrames: true,  // OBRIGATÓRIO — app usa iframes
       contextIsolation: false,
       webSecurity: false,
+      devTools: !app.isPackaged,
       additionalArguments: ['--data-dir=' + dir]
     }
   })
 
-  win.loadFile('index.html')
   win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url === 'about:blank') return { action: 'allow' }
     if (/^https:\/\//i.test(url)) shell.openExternal(url)
     return { action: 'deny' }
+  })
+  win.webContents.on('will-navigate', (event, url) => {
+    if (!ghzBackend?.isSessionAuthorized() && !isLicensePageUrl(url)) {
+      event.preventDefault()
+      loadLicensePage()
+    }
   })
   win.once('ready-to-show', () => { win.show(); win.focus() })
   setTimeout(() => { if (win && !win.isVisible()) win.show() }, 4000)
@@ -171,15 +197,19 @@ ipcMain.handle('parar-servidor-cardapio', async () => {
 })
 
 // ── GHZ Backend (licença + atualização) ──────────────────
-require('./js/ghz-backend')({
+ghzBackend = require('./js/ghz-backend')({
   app, ipcMain, getDataDir,
   appId: 'mesaup',
   manifestUrl: 'https://raw.githubusercontent.com/GhuzzBeatz/mesaup/master/update-manifest.json'
 })
 
 app.whenReady().then(async () => {
+  if (!gotSingleInstanceLock) return
   // Evita que uma atualização continue exibindo páginas da versão anterior.
   await session.defaultSession.clearCache().catch(() => {})
   createWindow()
+  await win.loadFile('pages/licenca.html')
+  const result = await ghzBackend.validateForStartup().catch(() => ({ ok: false }))
+  if (result?.ok && win && !win.isDestroyed()) await win.loadFile('index.html')
 })
 app.on('window-all-closed', () => { if (servidorCardapio) servidorCardapio.close(); if (process.platform !== 'darwin') app.quit() })
