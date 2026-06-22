@@ -1,6 +1,6 @@
 {
   "name": "mesaup",
-  "version": "2.0.4",
+  "version": "2.0.5",
   "description": "MesaUp - Sistema de Gestao para Bares e Lanchonetes",
   "main": "main.js",
   "author": "GHZ Plugin",
