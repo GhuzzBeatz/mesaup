@@ -1,6 +1,6 @@
 {
   "download_url": "https://github.com/GhuzzBeatz/mesaup/releases/latest/download/MesaUp.Setup.exe",
-  "version": "2.0.1",
-  "notes": "MesaUp v2.0.1 - nova janela em duas cores, menu ate o topo, identidade sem titulo duplicado e suporte oficial GHZ renovado.",
-  "sha256": "b979e019bb35a7edd12ea9c05f7a84ed1323a588480581a87027c123eb593d3e"
+  "version": "2.0.2",
+  "sha256": "044dcb09fd69470bbb6b4b40f84acf7bc050fd71f2db101914bd9c6f3cbb28f2",
+  "notes": "MesaUp v2.0.2 - topo liso sem linha horizontal e cartao de suporte sem contorno laranja."
 }
