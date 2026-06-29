@@ -1,6 +1,6 @@
 {
-  "sha256": "c0f908b45668752ef16e0f4f4cf5ced3f8d1f5ce746a3ce01e7e848d2a326180",
-  "notes": "Gate de licenca no processo principal, instancia unica e suporte GHZ atualizado.",
-  "version": "2.0.11",
-  "download_url": "https://github.com/GhuzzBeatz/mesaup/releases/latest/download/MesaUp.Setup.exe"
+  "download_url": "https://github.com/GhuzzBeatz/mesaup/releases/latest/download/MesaUp.Setup.exe",
+  "sha256": "8b1dc0f147608ffab285eac4cca6b053e49085e9b76ce316f2767f33ce3a342d",
+  "notes": "Taxa opcional do garcom nas comandas, com percentual padrao configuravel, pre-conta discriminada e relatorio por garcom atualizado.",
+  "version": "2.0.12"
 }
