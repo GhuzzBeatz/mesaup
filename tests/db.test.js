@@ -64,6 +64,32 @@ test('fecha comanda uma vez, baixa estoque e consolida vendas por garcom', () =>
   assert.equal(relatorio.total, 16)
 })
 
+test('aplica taxa opcional do garcom e discrimina no relatorio', () => {
+  resetData()
+  db.setConfig('taxa_garcom_percentual_padrao', '10')
+  const garcom = db.inserirGarcom({ nome: 'Beatriz', codigo: '8' }).garcom
+  const mesa = db.inserirMesa({ numero: '7' }).mesa
+  const comanda = db.inserirComanda({ mesa_id: mesa.id, mesa_num: mesa.numero, garcom_id: garcom.id })
+  db.adicionarItemComanda(comanda.id, { nome: 'Petisco', preco: 20, qtd: 2 })
+
+  assert.equal(db.getComanda(comanda.id).subtotal, 40)
+  assert.equal(db.getComanda(comanda.id).total, 40)
+
+  const taxa = db.atualizarTaxaGarcomComanda(comanda.id, { ativa: true, percentual: 10 })
+  assert.equal(taxa.ok, true)
+  assert.equal(taxa.comanda.taxa_garcom_valor, 4)
+  assert.equal(taxa.comanda.total, 44)
+
+  const fechada = db.fecharComanda(comanda.id, 'Dinheiro')
+  assert.equal(fechada.total, 44)
+  assert.equal(db.listarFinanceiro()[0].valor, 44)
+
+  const data = String(fechada.fechamento).slice(0, 10)
+  const linha = db.getRelatorioGarcons({ inicio: data, fim: data }).garcons.find(g => g.garcom_id === garcom.id)
+  assert.equal(linha.taxa_garcom, 4)
+  assert.equal(linha.total, 44)
+})
+
 test('preserva o historico ao excluir garcom sem comandas abertas', () => {
   resetData()
   const garcom = db.inserirGarcom({ nome: 'Daniel', codigo: '3' }).garcom

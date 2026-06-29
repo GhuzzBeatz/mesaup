@@ -12,6 +12,11 @@
       <div class="form-group" style="margin-bottom:10px"><label class="form-label">Telefone / WhatsApp</label><input id="telefone" placeholder="(11) 99999-9999"></div>
       <div class="form-group" style="margin-bottom:10px"><label class="form-label">CNPJ ou CPF</label><input id="cnpj" placeholder="00.000.000/0001-00"></div>
       <div class="form-group" style="margin-bottom:14px"><label class="form-label">Responsável</label><input id="responsavel" placeholder="Nome do proprietário"></div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label class="form-label">Taxa padrão do garçom (%)</label>
+        <input type="number" id="taxaGarcomPadrao" min="0" max="100" step="0.1" value="10" placeholder="10">
+        <div style="font-size:11px;color:var(--muted);margin-top:5px;line-height:1.45">A comanda continua opcional. Este valor aparece como sugestão quando o operador marcar a taxa do garçom.</div>
+      </div>
       <button class="btn btn-primary" onclick="salvar()">💾 Salvar Configurações</button>
       <div class="aviso av-ok"   id="avisoOk"   style="margin-top:10px"></div>
       <div class="aviso av-erro" id="avisoErro" style="margin-top:10px"></div>
@@ -41,6 +46,7 @@ const campos = ['nome','endereco','telefone','cnpj','responsavel']
 
 function carregar() {
   campos.forEach(c=>{ const el=document.getElementById(c); if(el) el.value=getConfig('bar_'+c) })
+  document.getElementById('taxaGarcomPadrao').value = getConfig('taxa_garcom_percentual_padrao', '10') || '10'
   try{ document.getElementById('licencaAtual').textContent=localStorage.getItem('@MESAUP:licenca')||'Não ativada' }catch(e){}
   const mesas    = listarMesas().length
   const produtos = listarCardapio().length
@@ -62,6 +68,8 @@ function carregar() {
 
 function salvar() {
   campos.forEach(c=>{ const el=document.getElementById(c); if(el) setConfig('bar_'+c, el.value.trim()) })
+  const taxa = Number(String(document.getElementById('taxaGarcomPadrao').value || '10').replace(',', '.'))
+  setConfig('taxa_garcom_percentual_padrao', Number.isFinite(taxa) && taxa >= 0 ? Math.min(100, taxa) : 10)
   aviso('ok','Configurações salvas!')
   carregar()
 }

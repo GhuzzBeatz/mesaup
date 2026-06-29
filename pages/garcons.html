@@ -27,7 +27,7 @@
   <div class="tbl-wrap" style="margin-bottom:22px">
     <div class="tbl-top"><span class="tbl-title">Vendas por Garçom</span><span class="tbl-count" id="countRelatorio"></span></div>
     <table>
-      <thead><tr><th>Código</th><th>Garçom</th><th style="text-align:center">Comandas</th><th style="text-align:center">Itens</th><th style="text-align:right">Ticket Médio</th><th style="text-align:right">Total Vendido</th></tr></thead>
+      <thead><tr><th>Código</th><th>Garçom</th><th style="text-align:center">Comandas</th><th style="text-align:center">Itens</th><th style="text-align:right">Ticket Médio</th><th style="text-align:right">Taxa Garçom</th><th style="text-align:right">Total Vendido</th></tr></thead>
       <tbody id="tbodyRelatorio"></tbody>
     </table>
   </div>
@@ -113,8 +113,9 @@ function renderRelatorio() {
       <td style="text-align:center">${g.comandas}</td>
       <td style="text-align:center">${g.itens}</td>
       <td style="text-align:right">${fmtMoeda(g.ticket_medio)}</td>
+      <td style="text-align:right;font-weight:800;color:var(--yellow)">${fmtMoeda(g.taxa_garcom || 0)}</td>
       <td style="text-align:right;font-weight:800;color:var(--green)">${fmtMoeda(g.total)}</td>
-    </tr>`).join('') : '<tr><td colspan="6" class="empty">Nenhuma venda por garçom no período.</td></tr>'
+    </tr>`).join('') : '<tr><td colspan="7" class="empty">Nenhuma venda por garçom no período.</td></tr>'
 }
 
 function renderEquipe() {
@@ -197,11 +198,11 @@ function exportarCSV() {
   const linhas = relatorio.garcons.filter(g => g.comandas > 0 || g.ativo)
   if (!linhas.length) return aviso('erro', 'Nenhum dado para exportar.')
   const csvEsc = v => `"${String(v ?? '').replace(/"/g, '""')}"`
-  let csv = '\uFEFFCódigo,Garçom,Comandas,Itens,Ticket Médio,Total Vendido\r\n'
+  let csv = '\uFEFFCódigo,Garçom,Comandas,Itens,Ticket Médio,Taxa Garçom,Total Vendido\r\n'
   linhas.forEach(g => {
-    csv += [csvEsc(g.codigo), csvEsc(g.nome), g.comandas, g.itens, g.ticket_medio.toFixed(2).replace('.', ','), g.total.toFixed(2).replace('.', ',')].join(',') + '\r\n'
+    csv += [csvEsc(g.codigo), csvEsc(g.nome), g.comandas, g.itens, g.ticket_medio.toFixed(2).replace('.', ','), Number(g.taxa_garcom || 0).toFixed(2).replace('.', ','), g.total.toFixed(2).replace('.', ',')].join(',') + '\r\n'
   })
-  csv += `\r\n"TOTAL","",${relatorio.comandas},${relatorio.itens},"${relatorio.ticket_medio.toFixed(2).replace('.', ',')}","${relatorio.total.toFixed(2).replace('.', ',')}"\r\n`
+  csv += `\r\n"TOTAL","",${relatorio.comandas},${relatorio.itens},"${relatorio.ticket_medio.toFixed(2).replace('.', ',')}","${Number(relatorio.taxa_garcom || 0).toFixed(2).replace('.', ',')}","${relatorio.total.toFixed(2).replace('.', ',')}"\r\n`
   ipcRenderer.invoke('salvar-csv', {
     conteudo: csv,
     nomeArquivo: `MesaUp_Vendas_Garcons_${relatorio.periodo.inicio}_a_${relatorio.periodo.fim}.csv`

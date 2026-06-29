@@ -42,9 +42,19 @@
       <div>
         <div style="font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">Itens do Pedido</div>
         <div id="listaItens" style="background:var(--card2);border:1px solid var(--border);border-radius:10px;min-height:180px;max-height:320px;overflow-y:auto;padding:10px"></div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px;background:var(--primary-bg);border:1px solid var(--primary-bdr);border-radius:8px">
-          <span style="font-weight:800;color:var(--fg)">TOTAL</span>
-          <span style="font-size:20px;font-weight:900;color:var(--primary)" id="detalhe_total">R$ 0,00</span>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;padding:10px;background:var(--primary-bg);border:1px solid var(--primary-bdr);border-radius:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+            <span style="font-size:12px;font-weight:800;color:var(--fg2)">Subtotal</span>
+            <span style="font-size:13px;font-weight:900;color:var(--fg)" id="detalhe_subtotal">R$ 0,00</span>
+          </div>
+          <div id="detalhe_taxa_linha" style="display:none;justify-content:space-between;align-items:center;gap:12px">
+            <span style="font-size:12px;font-weight:800;color:var(--fg2)" id="detalhe_taxa_label">Taxa do garçom</span>
+            <span style="font-size:13px;font-weight:900;color:var(--yellow)" id="detalhe_taxa">R$ 0,00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--primary-bdr);padding-top:7px">
+            <span style="font-weight:800;color:var(--fg)">TOTAL</span>
+            <span style="font-size:20px;font-weight:900;color:var(--primary)" id="detalhe_total">R$ 0,00</span>
+          </div>
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px;background:var(--card2);border:1px solid var(--border);border-radius:8px">
           <div class="form-group" style="width:90px">
@@ -54,6 +64,21 @@
           <div style="flex:1;text-align:right">
             <div style="font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Valor por pessoa</div>
             <div style="font-size:18px;font-weight:900;color:var(--green)" id="valorPorPessoa">R$ 0,00</div>
+          </div>
+        </div>
+        <div id="taxaGarcomArea" style="margin-top:10px;padding:10px;background:var(--card2);border:1px solid var(--border);border-radius:8px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--fg);cursor:pointer">
+            <input type="checkbox" id="taxaGarcomAtiva" onchange="salvarTaxaGarcomAtual()" style="width:16px;height:16px">
+            Taxa do garçom
+          </label>
+          <div style="display:flex;align-items:flex-end;gap:10px;margin-top:8px;flex-wrap:wrap">
+            <div class="form-group" style="width:115px">
+              <label class="form-label">Percentual</label>
+              <input type="number" id="taxaGarcomPercentual" value="10" min="0" max="100" step="0.1" onchange="salvarTaxaGarcomAtual()">
+            </div>
+            <div style="flex:1;min-width:180px;font-size:11px;color:var(--muted);line-height:1.45" id="taxaGarcomInfo">
+              Use somente quando o cliente aceitar a taxa de serviço.
+            </div>
           </div>
         </div>
       </div>
@@ -136,7 +161,7 @@
 
 <script>
 aplicarTemaAtual()
-const { getConfig, listarMesas, listarComandas, getComanda, transferirComanda, adicionarItemComanda, removerItemComanda, fecharComanda, cancelarComanda, editarComandaFechada, excluirComanda, listarCardapio, getEstoqueItem } = require('../js/db.js')
+const { getConfig, listarMesas, listarComandas, getComanda, transferirComanda, adicionarItemComanda, removerItemComanda, atualizarTaxaGarcomComanda, fecharComanda, cancelarComanda, editarComandaFechada, excluirComanda, listarCardapio, getEstoqueItem } = require('../js/db.js')
 const { ipcRenderer } = require('electron')
 let comandaAtualId = null
 
@@ -148,6 +173,39 @@ function rotuloGarcom(c) {
   const codigo = String(c?.garcom_codigo || '').trim()
   const nome = String(c?.garcom || '').trim()
   return [codigo ? `#${codigo}` : '', nome].filter(Boolean).join(' - ')
+}
+
+function subtotalComanda(c) {
+  if (c?.subtotal !== undefined && c?.subtotal !== null) return Number(c.subtotal || 0)
+  return (c?.itens || []).reduce((s, it) => s + Number(it.preco || 0) * Number(it.qtd || 0), 0)
+}
+
+function percentualTaxaComanda(c) {
+  const valor = c?.taxa_garcom_percentual
+  const padrao = getConfig('taxa_garcom_percentual_padrao', '10')
+  const n = Number(String(valor === undefined || valor === null || valor === '' ? padrao : valor).replace(',', '.'))
+  return Number.isFinite(n) && n >= 0 ? n : 10
+}
+
+function taxaGarcomComanda(c) {
+  if (!c?.taxa_garcom_ativa) return 0
+  if (c.taxa_garcom_valor !== undefined && c.taxa_garcom_valor !== null) return Number(c.taxa_garcom_valor || 0)
+  return subtotalComanda(c) * percentualTaxaComanda(c) / 100
+}
+
+function totalComanda(c) {
+  if (c?.total !== undefined && c?.total !== null) return Number(c.total || 0)
+  return Math.max(0, subtotalComanda(c) + taxaGarcomComanda(c) - Number(c?.desconto || 0))
+}
+
+function fmtPercentual(v) {
+  const n = Number(v || 0)
+  return Number.isInteger(n) ? String(n) : n.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+}
+
+function rotuloTaxaGarcom(c) {
+  const garcom = rotuloGarcom(c)
+  return `Taxa do garçom ${garcom ? '(' + garcom + ' - ' : '('}${fmtPercentual(percentualTaxaComanda(c))}%)`
 }
 
 function tituloSetor(setor) {
@@ -187,7 +245,7 @@ function render() {
           </div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:20px;font-weight:900;color:var(--primary)">${fmtMoeda(c.total || 0)}</div>
+          <div style="font-size:20px;font-weight:900;color:var(--primary)">${fmtMoeda(totalComanda(c))}</div>
           <div style="font-size:11px;color:var(--muted)">${(c.itens || []).length} item(s)</div>
         </div>
       </div>
@@ -232,7 +290,13 @@ function renderDetalhe() {
 
   document.getElementById('detalhe_titulo').textContent = `Mesa ${c.mesa_num} - Comanda #${c.id}${c.consumidor ? ' - Cliente: ' + c.consumidor : ''} (${c.status})`
   document.getElementById('detalhe_id').value = c.id
-  document.getElementById('detalhe_total').textContent = fmtMoeda(c.total || 0)
+  const subtotal = subtotalComanda(c)
+  const taxaGarcom = taxaGarcomComanda(c)
+  document.getElementById('detalhe_subtotal').textContent = fmtMoeda(subtotal)
+  document.getElementById('detalhe_total').textContent = fmtMoeda(totalComanda(c))
+  document.getElementById('detalhe_taxa_linha').style.display = c.taxa_garcom_ativa || taxaGarcom > 0 ? 'flex' : 'none'
+  document.getElementById('detalhe_taxa_label').textContent = rotuloTaxaGarcom(c)
+  document.getElementById('detalhe_taxa').textContent = fmtMoeda(taxaGarcom)
 
   const itens = c.itens || []
   const liEl = document.getElementById('listaItens')
@@ -252,6 +316,12 @@ function renderDetalhe() {
   document.getElementById('pagamentoArea').style.display = aberta ? '' : 'none'
   document.getElementById('btnFecharComanda').style.display = aberta ? '' : 'none'
   document.getElementById('btnCancelarComanda').style.display = aberta ? '' : 'none'
+  document.getElementById('taxaGarcomArea').style.display = aberta ? '' : 'none'
+  document.getElementById('taxaGarcomAtiva').checked = !!c.taxa_garcom_ativa
+  document.getElementById('taxaGarcomPercentual').value = fmtPercentual(percentualTaxaComanda(c))
+  document.getElementById('taxaGarcomInfo').innerHTML = rotuloGarcom(c)
+    ? `Será discriminado para <b>${esc(rotuloGarcom(c))}</b>. O cliente pode aceitar ou recusar antes de fechar.`
+    : 'Nenhum garçom foi vinculado a esta comanda. Para discriminar corretamente, selecione um garçom ao abrir a mesa.'
   const mesasLivres = aberta ? listarMesas().filter(m => Number(m.id) !== Number(c.mesa_id) && m.status === 'livre') : []
   const transferenciaArea = document.getElementById('transferenciaArea')
   transferenciaArea.style.display = aberta ? 'flex' : 'none'
@@ -282,7 +352,20 @@ function atualizarDivisao() {
   const c = getComanda(comandaAtualId)
   if (!c) return
   const pessoas = Math.max(1, Number(document.getElementById('dividirPessoas').value || 1))
-  document.getElementById('valorPorPessoa').textContent = fmtMoeda(Number(c.total || 0) / pessoas)
+  document.getElementById('valorPorPessoa').textContent = fmtMoeda(totalComanda(c) / pessoas)
+}
+
+function salvarTaxaGarcomAtual() {
+  const c = getComanda(comandaAtualId)
+  if (!c || c.status !== 'aberta') return
+  const percentual = Number(String(document.getElementById('taxaGarcomPercentual').value || '0').replace(',', '.'))
+  const resultado = atualizarTaxaGarcomComanda(comandaAtualId, {
+    ativa: document.getElementById('taxaGarcomAtiva').checked,
+    percentual
+  })
+  if (!resultado?.ok) return avisoModal(resultado?.erro || 'Não foi possível atualizar a taxa do garçom.')
+  renderDetalhe()
+  render()
 }
 
 function filtrarCardapio() {
@@ -430,7 +513,10 @@ function linhasItensConta(c) {
 
 function gerarHTMLContaMesa(c) {
   const pessoas = Math.max(1, Number(document.getElementById('dividirPessoas')?.value || 1))
-  const porPessoa = Number(c.total || 0) / pessoas
+  const subtotal = subtotalComanda(c)
+  const taxaGarcom = taxaGarcomComanda(c)
+  const total = totalComanda(c)
+  const porPessoa = total / pessoas
   const empresa = nomeEmpresaRecibo()
   return `<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>Conta Mesa ${esc(c.mesa_num || '')}</title>
@@ -446,6 +532,7 @@ function gerarHTMLContaMesa(c) {
       table{width:100%;border-collapse:collapse}td{padding:6px 0;border-bottom:2px solid #000;vertical-align:top}
       .item b{font-size:15px;line-height:1.25}.valor{text-align:right;white-space:nowrap;font-size:14px;font-weight:800}
       small{display:block;color:#000;font-size:12px;font-weight:700;margin-top:2px}.total{display:flex;justify-content:space-between;font-size:22px;font-weight:900;margin-top:7px}
+      .resumo{display:flex;justify-content:space-between;gap:8px;font-size:13px;font-weight:800;margin-top:6px;color:#000}.resumo b{text-align:right;white-space:nowrap}
       .split{display:flex;justify-content:space-between;font-size:13px;font-weight:700;margin-top:5px;color:#000;gap:8px}.foot{font-size:12px;color:#000;text-align:center;line-height:1.3;margin-top:6px;font-weight:800}
       @media print{button{display:none}}
     </style></head><body><div class="wrap">
@@ -463,7 +550,9 @@ function gerarHTMLContaMesa(c) {
       </div>
       <div class="line"></div>
       <table>${linhasItensConta(c)}</table>
-      <div class="total"><span>TOTAL</span><span>${fmtMoeda(c.total || 0)}</span></div>
+      ${taxaGarcom > 0 ? `<div class="resumo"><span>Subtotal</span><b>${fmtMoeda(subtotal)}</b></div>` : ''}
+      ${taxaGarcom > 0 ? `<div class="resumo"><span>${esc(rotuloTaxaGarcom(c))}</span><b>${fmtMoeda(taxaGarcom)}</b></div>` : ''}
+      <div class="total"><span>TOTAL</span><span>${fmtMoeda(total)}</span></div>
       ${pessoas > 1 ? `<div class="split"><span>Dividir em ${pessoas} pessoa(s)</span><b>${fmtMoeda(porPessoa)} cada</b></div>` : ''}
       <div class="line"></div>
       <div class="foot">Não é documento fiscal.<br>MesaUp - GHZ Plugin</div>
@@ -535,7 +624,7 @@ function fecharComandaAtual() {
   const resultado = fecharComanda(comandaAtualId, forma)
   if (resultado?.ok === false) return avisoModal(resultado.erro || 'Nao foi possivel fechar a comanda.')
   document.getElementById('modalDetalhe').style.display = 'none'
-  aviso('ok', `Mesa ${c.mesa_num} fechada! Total: ${fmtMoeda(c.total)}`)
+  aviso('ok', `Mesa ${c.mesa_num} fechada! Total: ${fmtMoeda(totalComanda(resultado || c))}`)
   render()
 }
 

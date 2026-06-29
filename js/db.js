@@ -27,6 +27,41 @@ function arredondarMoeda(valor) { return Math.round((Number(valor || 0) + Number
 function compararNatural(a, b) {
   return String(a ?? '').localeCompare(String(b ?? ''), 'pt-BR', { numeric: true, sensitivity: 'base' })
 }
+function normalizarPercentual(valor, padrao = 0) {
+  const n = Number(String(valor ?? '').replace(',', '.'))
+  if (!Number.isFinite(n) || n < 0) return Number(padrao || 0)
+  return Math.min(100, Math.round((n + Number.EPSILON) * 100) / 100)
+}
+function percentualTaxaGarcomPadrao() {
+  return normalizarPercentual(getConfig('taxa_garcom_percentual_padrao', '10'), 10)
+}
+function normalizarBoolean(valor) {
+  if (valor === true || valor === 1) return true
+  const v = String(valor || '').trim().toLowerCase()
+  return v === '1' || v === 'true' || v === 'sim' || v === 'on'
+}
+function subtotalItensComanda(c = {}) {
+  return arredondarMoeda((c.itens || []).reduce((s, it) => s + Number(it.preco || 0) * Number(it.qtd || 0), 0))
+}
+function recalcularTotaisComanda(c = {}) {
+  const subtotal = subtotalItensComanda(c)
+  const desconto = arredondarMoeda(Math.max(0, Number(c.desconto || 0)))
+  const taxaAtiva = normalizarBoolean(c.taxa_garcom_ativa)
+  const percentual = normalizarPercentual(
+    c.taxa_garcom_percentual === undefined || c.taxa_garcom_percentual === null || c.taxa_garcom_percentual === ''
+      ? percentualTaxaGarcomPadrao()
+      : c.taxa_garcom_percentual,
+    percentualTaxaGarcomPadrao()
+  )
+  const taxaGarcom = taxaAtiva ? arredondarMoeda(subtotal * percentual / 100) : 0
+  c.subtotal = subtotal
+  c.desconto = desconto
+  c.taxa_garcom_ativa = taxaAtiva
+  c.taxa_garcom_percentual = percentual
+  c.taxa_garcom_valor = taxaGarcom
+  c.total = Math.max(0, arredondarMoeda(subtotal + taxaGarcom - desconto))
+  return c
+}
 
 // â”€â”€ CONFIG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function getConfig(chave, padrao = '') {
@@ -241,10 +276,16 @@ function inserirComanda(d) {
     garcom: garcom ? garcom.nome : String(d.garcom || '').trim(),
     status: 'aberta',
     itens: [],
+    subtotal: 0,
+    desconto: 0,
+    taxa_garcom_ativa: normalizarBoolean(d.taxa_garcom_ativa),
+    taxa_garcom_percentual: normalizarPercentual(d.taxa_garcom_percentual, percentualTaxaGarcomPadrao()),
+    taxa_garcom_valor: 0,
     total: 0,
     abertura: agora(),
     fechamento: null
   }
+  recalcularTotaisComanda(nova)
   lista.push(nova)
   salvarJSON('comandas', lista)
   // atualiza status da mesa
@@ -299,7 +340,7 @@ function adicionarItemComanda(comanda_id, item) {
     obs: item.obs||'',
     setor_preparo: item.setor_preparo || ''
   })
-  lista[i].total = lista[i].itens.reduce((s,it) => s + it.preco * it.qtd, 0)
+  recalcularTotaisComanda(lista[i])
   salvarJSON('comandas', lista)
 }
 function removerItemComanda(comanda_id, item_id) {
@@ -307,13 +348,29 @@ function removerItemComanda(comanda_id, item_id) {
   const i = lista.findIndex(c => c.id === comanda_id)
   if (i < 0) return
   lista[i].itens = (lista[i].itens||[]).filter(it => it.item_id !== item_id)
-  lista[i].total = lista[i].itens.reduce((s,it) => s + it.preco * it.qtd, 0)
+  recalcularTotaisComanda(lista[i])
   salvarJSON('comandas', lista)
+}
+function atualizarTaxaGarcomComanda(comanda_id, dados = {}) {
+  const lista = lerJSON('comandas')
+  const i = lista.findIndex(c => Number(c.id) === Number(comanda_id))
+  if (i < 0) return { ok: false, erro: 'Comanda nao encontrada.' }
+  if (lista[i].status !== 'aberta') return { ok: false, erro: 'A taxa do garcom so pode ser alterada em comandas abertas.' }
+
+  if (dados.ativa !== undefined) lista[i].taxa_garcom_ativa = normalizarBoolean(dados.ativa)
+  if (dados.taxa_garcom_ativa !== undefined) lista[i].taxa_garcom_ativa = normalizarBoolean(dados.taxa_garcom_ativa)
+  if (dados.percentual !== undefined) lista[i].taxa_garcom_percentual = normalizarPercentual(dados.percentual, percentualTaxaGarcomPadrao())
+  if (dados.taxa_garcom_percentual !== undefined) lista[i].taxa_garcom_percentual = normalizarPercentual(dados.taxa_garcom_percentual, percentualTaxaGarcomPadrao())
+
+  recalcularTotaisComanda(lista[i])
+  salvarJSON('comandas', lista)
+  return { ok: true, comanda: lista[i] }
 }
 function fecharComanda(comanda_id, forma_pgto) {
   const lista = lerJSON('comandas')
   const i = lista.findIndex(c => c.id === comanda_id)
   if (i < 0 || lista[i].status !== 'aberta') return null
+  recalcularTotaisComanda(lista[i])
   const forma = forma_pgto || 'Dinheiro'
   const fiado = String(forma).toLowerCase() === 'fiado'
   if (fiado) {
@@ -344,7 +401,7 @@ function fecharComanda(comanda_id, forma_pgto) {
     inserirFinanceiro({
       data: dataHoje(),
       tipo: 'Receita',
-      descricao: `Mesa ${comanda.mesa_num}${comanda.consumidor ? ' - ' + comanda.consumidor : ''} - ${comanda.itens.length} item(s)`,
+      descricao: `Mesa ${comanda.mesa_num}${comanda.consumidor ? ' - ' + comanda.consumidor : ''} - ${comanda.itens.length} item(s)${Number(comanda.taxa_garcom_valor || 0) > 0 ? ' + taxa garcom' : ''}`,
       valor: comanda.total,
       forma_pgto: forma,
       comanda_id: comanda_id
@@ -376,11 +433,12 @@ function editarComandaFechada(id, changes) {
   if (changes.garcom_id !== undefined) c.garcom_id = changes.garcom_id
   if (changes.cliente !== undefined) c.consumidor = changes.cliente
   if (changes.desconto !== undefined) c.desconto = Number(changes.desconto || 0)
+  if (changes.taxa_garcom_ativa !== undefined) c.taxa_garcom_ativa = normalizarBoolean(changes.taxa_garcom_ativa)
+  if (changes.taxa_garcom_percentual !== undefined) c.taxa_garcom_percentual = normalizarPercentual(changes.taxa_garcom_percentual, percentualTaxaGarcomPadrao())
   if (changes.observacao !== undefined) c.observacao = changes.observacao
 
   // Recalculate total based on items
-  const subtotal = (c.itens || []).reduce((s, it) => s + Number(it.preco || 0) * Number(it.qtd || 0), 0)
-  c.total = Math.max(0, subtotal - Number(c.desconto || 0))
+  recalcularTotaisComanda(c)
   c.editado_em = agora()
 
   lista[i] = c
@@ -755,6 +813,7 @@ function getRelatorioGarcons(filtros = {}) {
       ativo: g.ativo !== false,
       comandas: 0,
       itens: 0,
+      taxa_garcom: 0,
       total: 0
     })
   })
@@ -773,12 +832,14 @@ function getRelatorioGarcons(filtros = {}) {
           ativo: c.garcom_id ? null : false,
           comandas: 0,
           itens: 0,
+          taxa_garcom: 0,
           total: 0
         })
       }
       const grupo = grupos.get(chave)
       grupo.comandas += 1
       grupo.itens += (c.itens || []).reduce((s, item) => s + Number(item.qtd || 0), 0)
+      grupo.taxa_garcom += Number(c.taxa_garcom_valor || 0)
       grupo.total += Number(c.total || 0)
     })
 
@@ -789,10 +850,12 @@ function getRelatorioGarcons(filtros = {}) {
   const comVendas = garcons.filter(g => g.comandas > 0)
   const total = comVendas.reduce((s, g) => s + g.total, 0)
   const comandas = comVendas.reduce((s, g) => s + g.comandas, 0)
+  const taxaGarcom = comVendas.reduce((s, g) => s + Number(g.taxa_garcom || 0), 0)
   return {
     periodo,
     garcons,
     total,
+    taxa_garcom: taxaGarcom,
     comandas,
     itens: comVendas.reduce((s, g) => s + g.itens, 0),
     ticket_medio: comandas ? total / comandas : 0
@@ -869,7 +932,7 @@ module.exports = {
   listarMesas, getMesa, inserirMesa, atualizarMesa, deletarMesa,
   listarGarcons, getGarcom, inserirGarcom, atualizarGarcom, deletarGarcom, getRelatorioGarcons,
   listarCardapio, getCardapioItem, inserirCardapio, atualizarCardapio, deletarCardapio,
-  listarComandas, getComanda, inserirComanda, transferirComanda, adicionarItemComanda, removerItemComanda, fecharComanda, cancelarComanda, editarComandaFechada, excluirComanda,
+  listarComandas, getComanda, inserirComanda, transferirComanda, adicionarItemComanda, removerItemComanda, atualizarTaxaGarcomComanda, fecharComanda, cancelarComanda, editarComandaFechada, excluirComanda,
   listarFinanceiro, inserirFinanceiro, atualizarFinanceiro, deletarFinanceiro,
   listarEstoque, getEstoqueItem, inserirEstoque, atualizarEstoque, deletarEstoque, toggleDisponivel, toggleInterno,
   listarClientes, getCliente, inserirCliente, atualizarCliente, deletarCliente, listarMovimentosCliente, registrarDebitoCliente, registrarPagamentoCliente,
